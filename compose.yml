@@ -8,6 +8,10 @@ networks:
 services:
   tbot:
     image: tbot
-    build: ./tbot/
+    build:
+      context: ./
+      dockerfile: ./tbot/Dockerfile
     networks:
       - dnet
+    volumes:
+      - ./tbot/conf:/conf

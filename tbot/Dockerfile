@@ -4,7 +4,7 @@ RUN apk add --no-cache git
 WORKDIR /build
 ADD . .
 RUN CGO_ENABLED=0 GOOS=linux \
-    go build -ldflags '-extldflags "-static"' -o app /build/cmd/app 
+    go build -ldflags '-extldflags "-static"' -o app /build/tbot/cmd/app 
 
 FROM alpine:3.17
 RUN apk add -U tzdata

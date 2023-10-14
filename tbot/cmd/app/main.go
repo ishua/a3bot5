@@ -31,7 +31,7 @@ var (
 // init config
 func init() {
 	loader := aconfig.LoaderFor(&cfg, aconfig.Config{
-		Files: []string{"config.json"},
+		Files: []string{"conf/tbot_config.json"},
 	})
 	if err := loader.Load(); err != nil {
 		panic(err)
