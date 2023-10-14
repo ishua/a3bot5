@@ -1,2 +1,4 @@
 github.com/cristalhq/aconfig v0.18.3 h1:Or12LIWIF+2mQpcGWA2PQnNc55+WiHFAqRjYh/pQNtM=
 github.com/cristalhq/aconfig v0.18.3/go.mod h1:NXaRp+1e6bkO4dJn+wZ71xyaihMDYPtCSvEhMTm/H3E=
+github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1 h1:wG8n/XJQ07TmjbITcGiUaOtXxdrINDz1b0J1w0SzqDc=
+github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1/go.mod h1:A2S0CWkNylc2phvKXWBBdD3K0iGnDBGbzRpISP2zBl8=

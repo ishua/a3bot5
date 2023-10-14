@@ -1,0 +1,13 @@
+version: "3.1"
+
+networks:
+  dnet:
+    name: dnetmy
+    driver: bridge
+
+services:
+  tbot:
+    image: tbot
+    build: ./tbot/
+    networks:
+      - dnet
