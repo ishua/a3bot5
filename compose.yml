@@ -13,5 +13,3 @@ services:
       dockerfile: ./tbot/Dockerfile
     networks:
       - dnet
-    volumes:
-      - ./tbot/conf:/conf
