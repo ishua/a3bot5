@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 )
 
@@ -17,18 +18,30 @@ type Msg struct {
 }
 
 type Model struct {
-	getRate GetRate
+	rater     GetRate
+	publisher Publisher
 }
 
-func NewModel(getRate GetRate) *Model {
-	return &Model{getRate: getRate}
+func NewModel(rater GetRate, publisher Publisher) *Model {
+	return &Model{rater: rater, publisher: publisher}
 }
 
 type GetRate interface {
 	GetRate(valute string) string
 }
 
-func (m *Model) DoJob(ctx context.Context, msg Msg) Msg {
+type Publisher interface {
+	Pub(ctx context.Context, payload string)
+}
+
+func (m *Model) DoJob(ctx context.Context, msgStr string) {
+	var msg Msg
+	err := msg.unmarshalBinary([]byte(msgStr))
+	if err != nil {
+		log.Println("[restjobs] Wrong unmarshal msg " + err.Error())
+		return
+	}
+
 	var replyText string
 	var valute string
 	switch msg.Command {
@@ -44,7 +57,7 @@ func (m *Model) DoJob(ctx context.Context, msg Msg) Msg {
 		log.Println(errText)
 	}
 
-	replyText = m.getRate.GetRate(valute)
+	replyText = m.rater.GetRate(valute)
 	nMsg := Msg{
 		Command:          msg.Command,
 		UserName:         msg.UserName,
@@ -55,25 +68,23 @@ func (m *Model) DoJob(ctx context.Context, msg Msg) Msg {
 		ReplyText:        replyText,
 	}
 
-	return nMsg
+	payload, err := nMsg.marshalBinary()
+	if err != nil {
+		log.Println("[doJob] marshal msg" + err.Error())
+		return
+	}
 
+	m.publisher.Pub(ctx, string(payload))
+	fmt.Println(string(payload))
 }
 
-const (
-	cbr_url = "https://www.cbr-xml-daily.ru/daily_json.js"
-)
-
-type cbr_response struct {
-	Date   string
-	Valute valutes
+func (m *Msg) marshalBinary() ([]byte, error) {
+	return json.Marshal(m)
 }
 
-type valutes struct {
-	USD valute
-	EUR valute
-}
-
-type valute struct {
-	CharCode string
-	Value    json.Number `json:"Value"`
+func (m *Msg) unmarshalBinary(data []byte) error {
+	if err := json.Unmarshal(data, &m); err != nil {
+		return err
+	}
+	return nil
 }
