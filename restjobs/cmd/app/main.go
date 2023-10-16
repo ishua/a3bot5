@@ -50,13 +50,9 @@ func main() {
 	// Close the subscription when we are done.
 	defer pubsub.Close()
 
-	for {
-		msg, err := pubsub.ReceiveMessage(ctx)
-		if err != nil {
-			panic(err)
-		}
+	ch := pubsub.Channel()
 
+	for msg := range ch {
 		fmt.Println(msg.Channel, msg.Payload)
 	}
-
 }
