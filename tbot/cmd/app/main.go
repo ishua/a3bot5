@@ -12,6 +12,7 @@ import (
 	"github.com/ishua/a3bot5/libs/closer"
 
 	"github.com/cristalhq/aconfig"
+	"github.com/cristalhq/aconfig/aconfigyaml"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -32,6 +33,9 @@ var (
 func init() {
 	loader := aconfig.LoaderFor(&cfg, aconfig.Config{
 		Files: []string{"conf/tbot_config.json"},
+		FileDecoders: map[string]aconfig.FileDecoder{
+			".yaml": aconfigyaml.New(),
+		},
 	})
 	if err := loader.Load(); err != nil {
 		panic(err)

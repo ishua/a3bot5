@@ -6,13 +6,37 @@ networks:
     driver: bridge
 
 services:
+  redis:
+      image: "redis:alpine"
+      container_name: redis
+      command: redis-server --save 120 1 --loglevel warning
+      ports:
+        - "6379:6379"
+      restart: unless-stopped
+      networks:      
+        - dnet   
   tbot:
     image: ghcr.io/ishua/a3bot5:latest
     # image: tbot
     # build:
     #   context: ./
     #   dockerfile: ./tbot/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - redis
     networks:
       - dnet
     volumes:
       - ./tbot/conf/:/conf
+  restjobs:
+    image: restjobs
+    build:
+      context: ./
+      dockerfile: ./restjobs/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - redis
+    networks:
+      - dnet
+    volumes:
+      - ./restjobs/conf/:/conf
