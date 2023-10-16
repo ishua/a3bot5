@@ -1,2 +1,3 @@
 debug: true
+redis: localhost:6379
 #token: some token for telegram bot

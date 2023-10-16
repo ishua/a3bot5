@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ishua/a3bot5/libs/closer"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/cristalhq/aconfig"
 	"github.com/cristalhq/aconfig/aconfigyaml"
@@ -17,8 +18,11 @@ import (
 )
 
 type MyConfig struct {
-	Token string `required:"true" env:"TELEGRAMBOTTOKEN" usage:"token for your telegram bot"`
-	Debug bool   `default:"false" usage:"turn on debug mode"`
+	Token           string `required:"true" env:"TELEGRAMBOTTOKEN" usage:"token for your telegram bot"`
+	Redis           string `default:"redis:6379" env:"REDIS" usage:"connect str to redis"`
+	Debug           bool   `default:"false" usage:"turn on debug mode"`
+	SubChannel      string `default:"tbot" usage:"channel for subscribe jobs"`
+	RestJobsChannel string `default:"restjobs" usage:"channel for jobs for restjobs"`
 }
 
 var cfg MyConfig
@@ -27,12 +31,13 @@ var (
 	// telegram
 	Bot     *tgbotapi.BotAPI
 	Updates <-chan tgbotapi.Update
+	rdb     *redis.Client
 )
 
 // init config
 func init() {
 	loader := aconfig.LoaderFor(&cfg, aconfig.Config{
-		Files: []string{"conf/tbot_config.json"},
+		Files: []string{"conf/tbot_config.yaml"},
 		FileDecoders: map[string]aconfig.FileDecoder{
 			".yaml": aconfigyaml.New(),
 		},
@@ -69,6 +74,18 @@ func init() {
 		os.Exit(1)
 	}
 }
+
+// init redis
+func init() {
+	log.Println("init redis: " + cfg.Redis)
+	rdb = redis.NewClient(&redis.Options{
+		Addr:     cfg.Redis,
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+
+}
+
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -88,12 +105,17 @@ func run(ctx context.Context) error {
 			if update.Message == nil {
 				continue
 			}
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "msgText")
-			msg.ParseMode = "html"
-			newMsg, err := Bot.Send(msg)
+
+			err := rdb.Publish(ctx, cfg.RestJobsChannel, update.Message.Text).Err()
 			if err != nil {
-				log.Printf("%d %s", newMsg.MessageID, err.Error())
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, err.Error())
+				msg.ParseMode = "html"
+				newMsg, err := Bot.Send(msg)
+				if err != nil {
+					log.Printf("%d %s", newMsg.MessageID, err.Error())
+				}
 			}
+
 		}
 	}()
 
