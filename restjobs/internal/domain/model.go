@@ -3,7 +3,6 @@ package domain
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 )
 
@@ -75,7 +74,6 @@ func (m *Model) DoJob(ctx context.Context, msgStr string) {
 	}
 
 	m.publisher.Pub(ctx, string(payload))
-	fmt.Println(string(payload))
 }
 
 func (m *Msg) marshalBinary() ([]byte, error) {

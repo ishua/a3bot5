@@ -46,6 +46,7 @@ func init() {
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})}
+	log.Println("Redis: " + cfg.Redis)
 }
 func (r Pubsub) Pub(ctx context.Context, value string) {
 	err := r.Publish(ctx, cfg.TbotChannel, value).Err()
@@ -60,6 +61,8 @@ func main() {
 	ctx := context.Background()
 	// There is no error because go-redis automatically reconnects on error.
 	pubsub := rdb.Subscribe(ctx, cfg.SubChannel)
+
+	log.Println("Subscribe to channel: " + cfg.SubChannel)
 	// Close the subscription when we are done.
 	defer pubsub.Close()
 

@@ -16,11 +16,11 @@ services:
       networks:      
         - dnet   
   tbot:
-    image: ghcr.io/ishua/a3bot5:latest
-    # image: tbot
-    # build:
-    #   context: ./
-    #   dockerfile: ./tbot/Dockerfile
+    # image: ghcr.io/ishua/a3bot5:latest
+    image: tbot
+    build:
+      context: ./
+      dockerfile: ./tbot/Dockerfile
     restart: unless-stopped
     depends_on:
       - redis
