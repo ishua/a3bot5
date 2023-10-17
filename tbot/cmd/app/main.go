@@ -214,7 +214,7 @@ func getCommand(userName string, msg string) (command, error) {
 		return command{}, fmt.Errorf("wrong command")
 	}
 	switch s[0] {
-	case "/rate_usd", "/usd":
+	case "/rate_usd", "usd":
 		return command{text: "/rate_usd", channel: "restjobs"}, nil
 	case "/rate_eur", "eur":
 		return command{text: "/rate_eur", channel: "restjobs"}, nil
