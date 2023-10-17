@@ -2,7 +2,7 @@
 # redis: localhost:6379
 token: some token for telegram bot
 users:
-  - user: AlekseyIm
+  - user: some user
     commands:
       - "/rate_usd"
       - "/rate_eur"
