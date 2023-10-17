@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -26,6 +27,11 @@ type MyConfig struct {
 	RestJobsChannel string `default:"restjobs" usage:"channel for jobs for restjobs"`
 }
 
+type command struct {
+	text    string
+	channel string
+}
+
 var cfg MyConfig
 var (
 	shutdownTimeout = 5 * time.Second
@@ -34,6 +40,27 @@ var (
 	Updates <-chan tgbotapi.Update
 	rdb     *redis.Client
 )
+
+type qmsg struct {
+	Command          string `json:"command"`
+	UserName         string `json:"userName"`
+	MsgId            int    `json:"msgId"`
+	ReplyToMessageID int    `json:"replyToMessageID"`
+	ChatId           int64  `json:"chatId"`
+	Text             string `json:"text"`
+	ReplyText        string `json:"replyText"`
+}
+
+func (m *qmsg) marshalBinary() ([]byte, error) {
+	return json.Marshal(m)
+}
+
+func (m *qmsg) unmarshalBinary(data []byte) error {
+	if err := json.Unmarshal(data, &m); err != nil {
+		return err
+	}
+	return nil
+}
 
 // init config
 func init() {
@@ -71,8 +98,7 @@ func init() {
 
 	Updates = Bot.GetUpdatesChan(u)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ERROR] Telegram: %s\n", err)
-		os.Exit(1)
+		log.Fatalf("[ERROR] Telegram: %s\n", err)
 	}
 }
 
@@ -105,14 +131,22 @@ func run(ctx context.Context) error {
 			if update.Message == nil {
 				continue
 			}
+			var replyText string
+			c, err := getCommand(update.Message.Chat.UserName, update.Message.Text)
+			if err != nil {
+				c.channel = cfg.SubChannel
+				replyText = err.Error()
+				c.text = ""
+			}
 
 			q := qmsg{
-				Command:          "/rate_usd", //TODO
+				Command:          c.text,
 				UserName:         update.Message.Chat.UserName,
 				MsgId:            update.Message.MessageID,
 				ReplyToMessageID: 0,
 				ChatId:           update.Message.Chat.ID,
 				Text:             update.Message.Text,
+				ReplyText:        replyText,
 			}
 
 			payload, err := q.marshalBinary()
@@ -121,8 +155,7 @@ func run(ctx context.Context) error {
 				continue
 			}
 
-			err = rdb.Publish(ctx, cfg.RestJobsChannel, //TODO
-				string(payload)).Err()
+			err = rdb.Publish(ctx, c.channel, string(payload)).Err()
 
 			if err != nil {
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, err.Error())
@@ -175,23 +208,16 @@ func run(ctx context.Context) error {
 	return nil
 }
 
-type qmsg struct {
-	Command          string `json:"command"`
-	UserName         string `json:"userName"`
-	MsgId            int    `json:"msgId"`
-	ReplyToMessageID int    `json:"replyToMessageID"`
-	ChatId           int64  `json:"chatId"`
-	Text             string `json:"text"`
-	ReplyText        string `json:"replyText"`
-}
-
-func (m *qmsg) marshalBinary() ([]byte, error) {
-	return json.Marshal(m)
-}
-
-func (m *qmsg) unmarshalBinary(data []byte) error {
-	if err := json.Unmarshal(data, &m); err != nil {
-		return err
+func getCommand(userName string, msg string) (command, error) {
+	s := strings.Split(msg, " ")
+	if len(s) < 1 {
+		return command{}, fmt.Errorf("wrong command")
 	}
-	return nil
+	switch s[0] {
+	case "/rate_usd", "/usd":
+		return command{text: "/rate_usd", channel: "restjobs"}, nil
+	case "/rate_eur", "eur":
+		return command{text: "/rate_eur", channel: "restjobs"}, nil
+	}
+	return command{}, fmt.Errorf("didn't understand the command")
 }
