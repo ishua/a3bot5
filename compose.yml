@@ -16,7 +16,7 @@ services:
       networks:      
         - dnet   
   tbot:
-    # image: ghcr.io/ishua/a3bot5:latest
+    # image: ghcr.io/ishua/a3bot5/tbot:latest
     image: tbot
     build:
       context: ./
