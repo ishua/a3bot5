@@ -20,11 +20,14 @@ import (
 )
 
 type MyConfig struct {
-	Token           string `required:"true" env:"TELEGRAMBOTTOKEN" usage:"token for your telegram bot"`
-	Redis           string `default:"redis:6379" env:"REDIS" usage:"connect str to redis"`
-	Debug           bool   `default:"false" usage:"turn on debug mode"`
-	SubChannel      string `default:"tbot" usage:"channel for subscribe jobs"`
-	RestJobsChannel string `default:"restjobs" usage:"channel for jobs for restjobs"`
+	Token      string `required:"true" env:"TELEGRAMBOTTOKEN" usage:"token for your telegram bot"`
+	Redis      string `default:"redis:6379" env:"REDIS" usage:"connect str to redis"`
+	Debug      bool   `default:"false" usage:"turn on debug mode"`
+	SubChannel string `default:"tbot" usage:"channel for subscribe jobs"`
+	Users      []struct {
+		User     string
+		Commands []string
+	} `usage:"allow users to use bot if empty then allows everybody"`
 }
 
 type command struct {
@@ -209,15 +212,43 @@ func run(ctx context.Context) error {
 }
 
 func getCommand(userName string, msg string) (command, error) {
+	var c command
 	s := strings.Split(msg, " ")
 	if len(s) < 1 {
-		return command{}, fmt.Errorf("wrong command")
+		return c, fmt.Errorf("wrong command")
 	}
 	switch s[0] {
 	case "/rate_usd", "usd":
-		return command{text: "/rate_usd", channel: "restjobs"}, nil
+		c.text = "/rate_usd"
+		c.channel = "restjobs"
 	case "/rate_eur", "eur":
-		return command{text: "/rate_eur", channel: "restjobs"}, nil
+		c.text = "/rate_eur"
+		c.channel = "restjobs"
 	}
-	return command{}, fmt.Errorf("didn't understand the command")
+
+	if c.text == "" {
+		return c, fmt.Errorf("command not found")
+	}
+
+	deny := false
+	if len(cfg.Users) > 0 {
+		deny = true
+		for _, user := range cfg.Users {
+			if user.User == userName {
+				for _, command := range user.Commands {
+					if command == c.text {
+						deny = false
+						break
+					}
+				}
+				break
+			}
+		}
+	}
+
+	if deny {
+		return command{}, fmt.Errorf("deny command")
+	}
+
+	return c, nil
 }

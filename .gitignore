@@ -86,6 +86,7 @@ Temporary Items
 # Dependency directories (remove the comment below to include it)
 # vendor/
 build/
+*/bin
 
 # secrets
 secrets.ps1
