@@ -87,6 +87,8 @@ Temporary Items
 # vendor/
 build/
 */bin
+*/env
+__pycache__
 
 # secrets
 secrets.ps1
