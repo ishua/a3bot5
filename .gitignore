@@ -93,3 +93,5 @@ __pycache__
 # secrets
 secrets.ps1
 secrets.sh
+
+temp
