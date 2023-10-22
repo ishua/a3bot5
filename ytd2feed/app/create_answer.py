@@ -57,6 +57,5 @@ class Answer:
         if self.getReply == "":
             print("some error with send answer")
         r = redis.Redis(self.redis)
-        print(json.dumps(self.msg))
         r.publish(self.channel, json.dumps(self.msg))
         

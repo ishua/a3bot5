@@ -53,7 +53,6 @@ if __name__ == '__main__':
         if message:
             if message["type"] == "message":
                 payload = message["data"]
-                print(payload)
                 a = app.Answer(payload, cfg.redis, cfg.tbotchannel)
                 fo = cfg.getUserCnf(a.getUserName(), "rss")
                 if fo is None:
