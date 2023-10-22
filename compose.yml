@@ -16,7 +16,7 @@ services:
       networks:      
         - dnet   
   tbot:
-    # image: ghcr.io/ishua/a3bot5-tbot:v0.1.7
+    # image: ghcr.io/ishua/a3bot5-tbot:latest
     image: tbot
     build:
       context: ./
@@ -29,7 +29,7 @@ services:
     volumes:
       - ./tbot/conf/:/conf
   restjobs:
-    # image: ghcr.io/ishua/a3bot5-restjobs:v0.1.7
+    # image: ghcr.io/ishua/a3bot5-restjobs:latest
     image: restjobs
     build:
       context: ./
@@ -42,7 +42,7 @@ services:
     volumes:
       - ./restjobs/conf/:/conf
   ytd2feed:
-    # image: ghcr.io/ishua/a3bot5-restjobs:v0.1.7
+    # image: ghcr.io/ishua/a3bot5-ytd2feed:latest
     image: ytd2feed
     build:
       context: ./
