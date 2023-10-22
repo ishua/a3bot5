@@ -14,7 +14,7 @@ class Conf():
     
     @property
     def redis( self ) ->str: 
-        return self.conf.get("redis", "redis:6379")
+        return self.conf.get("redis", "redis")
     
     @property
     def channel( self ) ->str: 
@@ -28,15 +28,15 @@ class Conf():
     def url2content( self ) ->str: 
         return self.conf.get("url2content", "")
     
-    def user( self, userName: str ) -> dict:
-        _user = {}
+    @property
+    def tbotchannel( self ) ->str: 
+        return self.conf.get("tbotchannel", "tbot")
+    
+    def getUserCnf( self, userName: str, feedName: str ) -> dict:
         for u in self.users:
-            if u["user"] == userName:
-                _user["name"] = u["user"]
-                _user["feedName"] = u["feed_name"]
-                _user["feedDescription"] = u["feed_description"]
-                _user["format"] = u["format"]
+            if u["name"] == userName and u["feedName"] == feedName:
+                return u
 
-        return _user
+        return None
             
     

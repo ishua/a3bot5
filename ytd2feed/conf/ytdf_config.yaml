@@ -1,10 +1,9 @@
 version: 0.0.1
-#redis: localhost:6379
-tbotchannel: tbot
-path2content: temp
+# redis: localhost
+path2content: data
 url2content: https://localhost/
 users: 
-  - user: AlekseyIm
-    feed_name: rss
-    feed_description: my rss generate
+  - name: Username
+    feedName: rss
+    feedDescription: my rss generate
     format: ba[ext=m4a]/ba[ext=mp3]/ba[ext=aac]

@@ -224,6 +224,9 @@ func getCommand(userName string, msg string) (command, error) {
 	case "/rate_eur", "eur":
 		c.text = "/rate_eur"
 		c.channel = "restjobs"
+	case "/y2a", "y", "Y":
+		c.text = "/y2a"
+		c.channel = "ytd2feed"
 	}
 
 	if c.text == "" {

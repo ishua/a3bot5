@@ -41,3 +41,17 @@ services:
       - dnet
     volumes:
       - ./restjobs/conf/:/conf
+  ytd2feed:
+    # image: ghcr.io/ishua/a3bot5-restjobs:v0.1.7
+    image: ytd2feed
+    build:
+      context: ./
+      dockerfile: ./ytd2feed/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - redis
+    networks:
+      - dnet
+    volumes:
+      - ./ytd2feed/conf/:/srv/conf
+      - ./ytd2feed/data/:/srv/data

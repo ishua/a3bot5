@@ -8,7 +8,7 @@ class PPadd2feed(yt_dlp.postprocessor.PostProcessor):
     def run(self, info):
 
         self.fc.add2rss(
-            title = info['title'],
+            title = info['title'], 
             description = info["description"],
             webpageUrl = info['webpage_url'],
             fileExtention = info['ext'] ,
