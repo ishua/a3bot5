@@ -102,7 +102,7 @@ class BotMsg:
             _reply = "This is help for /torrent command \n"
             _reply += "start words: /torrent, t, T\n"
             _reply += "next words:\n"
-            _reply += '- "add" + category: "movie/m","shows/s", "cartoon/c" - add torrents in category\n'
+            _reply += '- "add" + category: "movie/m","shows/s", "cartoon/c", "cartoon_s/cs", "audiobook/a", "audiobook_p/ap" - add torrents in category\n'
             _reply += '- "list" - list torrens in actions\n'
             _reply += '- "status #" - where # it is id torrent\n'
             _reply += '- "del #" - where # it is id torrent\n'

@@ -15,6 +15,12 @@ class Tr:
             _download_dir += "shows"
         if type_file == "c" or type_file == "cartoon":
             _download_dir += "cartoon"
+        if type_file == "a" or type_file == "audiobook":
+            _download_dir += "audiobook"
+        if type_file == "ap" or type_file == "audiobook_p":
+            _download_dir += "audiobook_p"
+        if type_file == "c" or type_file == "cartoon_s":
+            _download_dir += "cartoon_s"
         if _download_dir == self.download_dir:
             return "wrong category"
         
