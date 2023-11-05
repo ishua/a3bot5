@@ -15,6 +15,28 @@ services:
       restart: unless-stopped
       networks:      
         - dnet   
+  transmission:
+    image: lscr.io/linuxserver/transmission:latest
+    container_name: transmission
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      # - TRANSMISSION_WEB_HOME= #optional
+      # - USER= #optional
+      # - PASS= #optional
+      # - WHITELIST= #optional
+      # - PEERPORT= #optional
+      # - HOST_WHITELIST= #optional
+    volumes:
+      - ./config/:/config
+      - ./downloads/:/downloads
+      - ./watch/:/watch
+    ports:
+      - 9091:9091
+      - 51413:51413
+      - 51413:51413/udp
+    restart: unless-stopped
   tbot:
     # image: ghcr.io/ishua/a3bot5-tbot:latest
     image: tbot
@@ -55,3 +77,17 @@ services:
     volumes:
       - ./ytd2feed/conf/:/srv/conf
       - ./ytd2feed/data/:/srv/data
+  transmission_bot:
+    # image: ghcr.io/ishua/a3bot5-ytd2feed:latest
+    image: transmission_bot
+    build:
+      context: ./
+      dockerfile: ./transmission/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - transmission
+    networks:
+      - dnet
+    volumes:
+      - ./transmission/conf/:/srv/conf

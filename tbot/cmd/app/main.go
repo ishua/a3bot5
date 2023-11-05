@@ -2,16 +2,16 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/ishua/a3bot5/libs/closer"
+	"github.com/ishua/a3bot5/tbot/internal/botcmd"
+	"github.com/ishua/a3bot5/tbot/internal/schema"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/cristalhq/aconfig"
@@ -30,9 +30,12 @@ type MyConfig struct {
 	} `usage:"allow users to use bot if empty then allows everybody"`
 }
 
-type command struct {
-	text    string
-	channel string
+type pubsub struct {
+	*redis.Client
+}
+
+func (r pubsub) Pub(ctx context.Context, channel, value string) error {
+	return r.Publish(ctx, channel, value).Err()
 }
 
 var cfg MyConfig
@@ -41,29 +44,9 @@ var (
 	// telegram
 	Bot     *tgbotapi.BotAPI
 	Updates <-chan tgbotapi.Update
-	rdb     *redis.Client
+	rdb     pubsub
+	botCmd  botcmd.CmdRouter
 )
-
-type qmsg struct {
-	Command          string `json:"command"`
-	UserName         string `json:"userName"`
-	MsgId            int    `json:"msgId"`
-	ReplyToMessageID int    `json:"replyToMessageID"`
-	ChatId           int64  `json:"chatId"`
-	Text             string `json:"text"`
-	ReplyText        string `json:"replyText"`
-}
-
-func (m *qmsg) marshalBinary() ([]byte, error) {
-	return json.Marshal(m)
-}
-
-func (m *qmsg) unmarshalBinary(data []byte) error {
-	if err := json.Unmarshal(data, &m); err != nil {
-		return err
-	}
-	return nil
-}
 
 // init config
 func init() {
@@ -75,6 +58,9 @@ func init() {
 	})
 	if err := loader.Load(); err != nil {
 		panic(err)
+	}
+	if len(cfg.Users) < 1 {
+		panic("no cfg.Users in config")
 	}
 }
 
@@ -108,11 +94,16 @@ func init() {
 // init redis
 func init() {
 	log.Println("init redis: " + cfg.Redis)
-	rdb = redis.NewClient(&redis.Options{
+	rdb = pubsub{redis.NewClient(&redis.Options{
 		Addr:     cfg.Redis,
 		Password: "", // no password set
 		DB:       0,  // use default DB
-	})
+	})}
+}
+
+// init botCmd
+func init() {
+	botCmd = *botcmd.NewCmdRouter(rdb)
 }
 
 func main() {
@@ -134,41 +125,50 @@ func run(ctx context.Context) error {
 			if update.Message == nil {
 				continue
 			}
-			var replyText string
-			c, err := getCommand(update.Message.Chat.UserName, update.Message.Text)
-			if err != nil {
-				c.channel = cfg.SubChannel
-				replyText = err.Error()
-				c.text = ""
-			}
 
-			q := qmsg{
-				Command:          c.text,
-				UserName:         update.Message.Chat.UserName,
-				MsgId:            update.Message.MessageID,
-				ReplyToMessageID: 0,
-				ChatId:           update.Message.Chat.ID,
-				Text:             update.Message.Text,
-				ReplyText:        replyText,
-			}
-
-			payload, err := q.marshalBinary()
-			if err != nil {
-				log.Println("marshal err:" + err.Error())
-				continue
-			}
-
-			err = rdb.Publish(ctx, c.channel, string(payload)).Err()
-
-			if err != nil {
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, err.Error())
-				msg.ParseMode = "html"
-				newMsg, err := Bot.Send(msg)
-				if err != nil {
-					log.Printf("%d %s", newMsg.MessageID, err.Error())
+			var allowCommands []string
+			for _, user := range cfg.Users {
+				if user.User == update.Message.Chat.UserName {
+					allowCommands = user.Commands
 				}
 			}
 
+			if len(allowCommands) < 1 {
+				errStr := "user haven't allow commands: " + update.Message.Chat.UserName
+				botSendErr(errStr, update.Message.Chat.ID, update.Message.MessageID)
+				continue
+			}
+
+			var fileUrl string
+			var err error
+			if update.Message.Document != nil {
+				fileUrl, err = Bot.GetFileDirectURL(update.Message.Document.FileID)
+				if err != nil {
+					errStr := "can't get file url " + err.Error()
+					botSendErr(errStr, update.Message.Chat.ID, update.Message.MessageID)
+					continue
+				}
+			}
+			var replyMsgId int
+			if update.Message.ReplyToMessage != nil {
+				replyMsgId = update.Message.ReplyToMessage.MessageID
+			}
+			bmsg := botcmd.Message{
+				UserName:         update.Message.Chat.UserName,
+				MsgId:            update.Message.MessageID,
+				ReplyToMessageID: replyMsgId,
+				ChatId:           update.Message.Chat.ID,
+				Text:             update.Message.Text,
+				Caption:          update.Message.Caption,
+				ReplyText:        "",
+				FileUrl:          fileUrl,
+			}
+			err = botCmd.Send(context.Background(), bmsg, allowCommands)
+
+			if err != nil {
+				errStr := "wrong route message " + err.Error()
+				botSendErr(errStr, update.Message.Chat.ID, update.Message.MessageID)
+			}
 		}
 	}()
 
@@ -176,8 +176,8 @@ func run(ctx context.Context) error {
 	go func() {
 		ch := pubsub.Channel()
 		for msg := range ch {
-			var m qmsg
-			err := m.unmarshalBinary([]byte(msg.Payload))
+			var m schema.ChannelMsg
+			err := m.UnmarshalBinary([]byte(msg.Payload))
 			if err != nil {
 				log.Println("wrong unmarshal msg " + err.Error())
 				continue
@@ -185,6 +185,9 @@ func run(ctx context.Context) error {
 			msg := tgbotapi.NewMessage(m.ChatId, m.ReplyText)
 			msg.ParseMode = "html"
 			newMsg, err := Bot.Send(msg)
+			if m.MsgId != 0 {
+				msg.ReplyToMessageID = m.MsgId
+			}
 			if err != nil {
 				log.Printf("%d %s", newMsg.MessageID, err.Error())
 			}
@@ -211,47 +214,13 @@ func run(ctx context.Context) error {
 	return nil
 }
 
-func getCommand(userName string, msg string) (command, error) {
-	var c command
-	s := strings.Split(msg, " ")
-	if len(s) < 1 {
-		return c, fmt.Errorf("wrong command")
+func botSendErr(errStr string, chatId int64, replyId int) {
+	log.Println(errStr)
+	msg := tgbotapi.NewMessage(chatId, errStr)
+	msg.ParseMode = "html"
+	newMsg, err := Bot.Send(msg)
+	msg.ReplyToMessageID = replyId
+	if err != nil {
+		log.Printf("%d %s", newMsg.MessageID, err.Error())
 	}
-	switch s[0] {
-	case "/rate_usd", "usd":
-		c.text = "/rate_usd"
-		c.channel = "restjobs"
-	case "/rate_eur", "eur":
-		c.text = "/rate_eur"
-		c.channel = "restjobs"
-	case "/y2a", "y", "Y":
-		c.text = "/y2a"
-		c.channel = "ytd2feed"
-	}
-
-	if c.text == "" {
-		return c, fmt.Errorf("command not found")
-	}
-
-	deny := false
-	if len(cfg.Users) > 0 {
-		deny = true
-		for _, user := range cfg.Users {
-			if user.User == userName {
-				for _, command := range user.Commands {
-					if command == c.text {
-						deny = false
-						break
-					}
-				}
-				break
-			}
-		}
-	}
-
-	if deny {
-		return command{}, fmt.Errorf("deny command")
-	}
-
-	return c, nil
 }
