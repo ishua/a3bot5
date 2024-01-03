@@ -1,0 +1,5 @@
+# redis: localhost:6379
+sub_channel: fsnote
+repo_path: "temp/fsnotes"
+repo_url: ""
+repo_access_token: ""
