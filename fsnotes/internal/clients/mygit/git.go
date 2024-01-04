@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
@@ -48,6 +50,39 @@ func (r *Repo) Pull(ctx context.Context) error {
 		RemoteName: "origin"})
 }
 
-func (r *Repo) CommitAndPush(ctx context.Context, path string) error {
+func (r *Repo) CommitAndPush(ctx context.Context, path []string) error {
+	w, err := r.Worktree()
+	if err != nil {
+		return fmt.Errorf("commitAndPush create worktree: %w", err)
+	}
+	for _, p := range path {
+		_, err = w.Add(p)
+		if err != nil {
+			return fmt.Errorf("commitAndPush file %s %w", p, err)
+		}
+	}
+
+	_, err = w.Commit("example go-git commit", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  r.Username,
+			Email: "hnas@a3b.me",
+			When:  time.Now(),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("commitAndPush commit %w", err)
+	}
+
+	err = r.Push(&git.PushOptions{
+		Auth: &http.BasicAuth{
+			Username: r.Username,
+			Password: r.Token,
+		},
+	})
+
+	if err != nil {
+		return fmt.Errorf("commitAndPush push %w", err)
+	}
+
 	return nil
 }

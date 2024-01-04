@@ -88,6 +88,9 @@ func getCommand(str string, allowCommands []string) (Command, error) {
 	case "/torrent", "torrent", "t", "T":
 		c.text = "/torrent"
 		c.channel = "transmission"
+	case "/note", "note", "n", "N", "Note":
+		c.text = "/note"
+		c.channel = "fsnotes"
 	}
 
 	if c.text == "" {
