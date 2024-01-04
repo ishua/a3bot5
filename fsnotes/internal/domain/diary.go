@@ -10,7 +10,7 @@ type Diary struct {
 }
 
 type Repo interface {
-	Read(ctx context.Context) ([]string, error)
+	ReadRows(ctx context.Context) ([]string, error)
 	AddRows(ctx context.Context, str []string) error
 }
 
