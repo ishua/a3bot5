@@ -38,11 +38,11 @@ services:
       - 51413:51413/udp
     restart: unless-stopped
   tbot:
-    # image: ghcr.io/ishua/a3bot5-tbot:latest
-    image: tbot
-    build:
-      context: ./
-      dockerfile: ./tbot/Dockerfile
+    image: ghcr.io/ishua/a3bot5-tbot:latest
+    # image: tbot
+    # build:
+    #   context: ./
+    #   dockerfile: ./tbot/Dockerfile
     restart: unless-stopped
     depends_on:
       - redis
@@ -51,11 +51,11 @@ services:
     volumes:
       - ./tbot/conf/:/conf
   restjobs:
-    # image: ghcr.io/ishua/a3bot5-restjobs:latest
-    image: restjobs
-    build:
-      context: ./
-      dockerfile: ./restjobs/Dockerfile
+    image: ghcr.io/ishua/a3bot5-restjobs:latest
+    # image: restjobs
+    # build:
+    #   context: ./
+    #   dockerfile: ./restjobs/Dockerfile
     restart: unless-stopped
     depends_on:
       - redis
@@ -64,11 +64,11 @@ services:
     volumes:
       - ./restjobs/conf/:/conf
   ytd2feed:
-    # image: ghcr.io/ishua/a3bot5-ytd2feed:latest
-    image: ytd2feed
-    build:
-      context: ./
-      dockerfile: ./ytd2feed/Dockerfile
+    image: ghcr.io/ishua/a3bot5-ytd2feed:latest
+    # image: ytd2feed
+    # build:
+    #   context: ./
+    #   dockerfile: ./ytd2feed/Dockerfile
     restart: unless-stopped
     depends_on:
       - redis
@@ -78,11 +78,11 @@ services:
       - ./ytd2feed/conf/:/srv/conf
       - ./ytd2feed/data/:/srv/data
   transmission_bot:
-    # image: ghcr.io/ishua/a3bot5-ytd2feed:latest
-    image: transmission_bot
-    build:
-      context: ./
-      dockerfile: ./transmission/Dockerfile
+    image: ghcr.io/ishua/a3bot5-transmission:latest
+    # image: transmission_bot
+    # build:
+    #   context: ./
+    #   dockerfile: ./transmission/Dockerfile
     restart: unless-stopped
     depends_on:
       - redis
@@ -91,3 +91,18 @@ services:
       - dnet
     volumes:
       - ./transmission/conf/:/srv/conf
+  fsnotes:
+    image: ghcr.io/ishua/a3bot5-fsnotes:latest
+    # image: fsnotes
+    # build:
+    #   context: /Users/amamyrin/Documents/repo/a3bot5/
+    #   dockerfile: ./fsnotes/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - tbot
+    networks:
+      - dnet
+    volumes:
+      - ./fsnotes/conf/:/conf
+      - ./fsnotes/temp/data/:/data

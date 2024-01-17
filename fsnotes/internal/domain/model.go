@@ -20,10 +20,10 @@ type Msg struct {
 }
 
 const helpText = `This is help for /note command
- - /note diary add 5bx <text>
- - /note diary add entry <text>
+ - /note diary add 5bx -text-
+ - /note diary add entry -text-
  - /note diary help
- - /note quick <text>
+ - /note quick -text-
  - synonyms: diary = d, add=a, entry=e, 5bx=5, quick=q`
 
 type Note struct {
@@ -109,7 +109,7 @@ func (m *Msg) ParseCommand() (Note, error) {
 	// note diary list week/month/day
 	// note help
 	texts := strings.Split(m.Text, " ")
-	if len(texts) <= 2 {
+	if len(texts) < 2 {
 		return Note{}, fmt.Errorf("Wrong fsnotes command")
 	}
 	if texts[1] == "help" {

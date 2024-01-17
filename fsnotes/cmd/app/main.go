@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 
 	"github.com/cristalhq/aconfig"
 	"github.com/cristalhq/aconfig/aconfigyaml"
@@ -14,7 +15,8 @@ import (
 type MyConfig struct {
 	Redis           string `default:"redis:6379" env:"REDIS" usage:"connect str to redis"`
 	SubChannel      string `default:"fsnotes" usage:"channel for subscribe jobs"`
-	RepoPath        string `default:"data/fsnotes" usage:" path to repository fsnotest"`
+	TbotChannel     string `default:"tbot" usage:"channel for jobs for tbot"`
+	RepoPath        string `default:"data/fsnotes" usage:" path to repository fsnotes"`
 	RepoUrl         string `required:"true"`
 	RepoAccessToken string `env:"REPOACCESSTOKEN" required:"true"`
 	RepoDiaryPath   string `required:"true"`
@@ -45,20 +47,20 @@ func init() {
 }
 
 // // init redis
-// func init() {
-// 	rdb = &Pubsub{redis.NewClient(&redis.Options{
-// 		Addr:     cfg.Redis,
-// 		Password: "", // no password set
-// 		DB:       0,  // use default DB
-// 	})}
-// 	log.Println("Redis: " + cfg.Redis)
-// }
-// func (r Pubsub) Pub(ctx context.Context, value string) {
-// 	err := r.Publish(ctx, cfg.TbotChannel, value).Err()
-// 	if err != nil {
-// 		log.Println("publish error: " + err.Error())
-// 	}
-// }
+func init() {
+	rdb = &Pubsub{redis.NewClient(&redis.Options{
+		Addr:     cfg.Redis,
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})}
+	log.Println("Redis: " + cfg.Redis)
+}
+func (r Pubsub) Pub(ctx context.Context, value string) {
+	err := r.Publish(ctx, cfg.TbotChannel, value).Err()
+	if err != nil {
+		log.Println("publish error: " + err.Error())
+	}
+}
 
 // init git
 func init() {
@@ -74,15 +76,18 @@ func main() {
 	ctx := context.Background()
 	myRepo = repo.NewGitFile(cfg.RepoPath, cfg.RepoDiaryPath, myGit)
 	d := domain.NewDiary(myRepo)
-	m := domain.NewModel(d, Test{})
-	m.DoJob(ctx, `
-	{
-		"text":"/note diary add entry 2"
+	m := domain.NewModel(d, rdb)
+
+	pubsub := rdb.Subscribe(ctx, cfg.SubChannel)
+
+	log.Println("Subscribe to channel: " + cfg.SubChannel)
+	// Close the subscription when we are done.
+	defer pubsub.Close()
+
+	ch := pubsub.Channel()
+
+	for msg := range ch {
+		log.Println(msg.Payload)
+		go m.DoJob(ctx, msg.Payload)
 	}
-	`)
 }
-
-type Test struct {
-}
-
-func (r Test) Pub(ctx context.Context, value string) {}
