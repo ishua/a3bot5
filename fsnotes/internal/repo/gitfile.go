@@ -5,11 +5,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 type GitFile struct {
-	path string
-	git  Gitter
+	pathRepo   string
+	pathToFile string
+	git        Gitter
 }
 
 type Gitter interface {
@@ -17,10 +19,11 @@ type Gitter interface {
 	CommitAndPush(ctx context.Context, path []string) error
 }
 
-func NewGitFile(path string, git Gitter) *GitFile {
+func NewGitFile(pathRepo, pathToFile string, git Gitter) *GitFile {
 	return &GitFile{
-		path: path,
-		git:  git,
+		pathRepo:   pathRepo,
+		pathToFile: pathToFile,
+		git:        git,
 	}
 }
 
@@ -30,7 +33,7 @@ func (g *GitFile) ReadRows(ctx context.Context) ([]string, error) {
 		return nil, fmt.Errorf("gitfile ReadRows pull: %w", err)
 	}
 
-	f, err := os.Open(g.path)
+	f, err := os.Open(filepath.Join(g.pathRepo, g.pathToFile))
 	if err != nil {
 		return nil, fmt.Errorf("gitfile readfile: %w", err)
 	}
@@ -55,7 +58,7 @@ func (g *GitFile) AddRows(ctx context.Context, str []string) error {
 		return fmt.Errorf("gitfile AddRows pull: %w", err)
 	}
 
-	f, err := os.OpenFile(g.path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	f, err := os.OpenFile(filepath.Join(g.pathRepo, g.pathToFile), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return fmt.Errorf("gitfile AddRows OpenFile: %w", err)
 	}
@@ -72,7 +75,7 @@ func (g *GitFile) AddRows(ctx context.Context, str []string) error {
 		return fmt.Errorf("gitfile AddRows file.Close: %w", err)
 	}
 
-	err = g.git.CommitAndPush(ctx, []string{g.path})
+	err = g.git.CommitAndPush(ctx, []string{g.pathToFile})
 	if err != nil {
 		return fmt.Errorf("gitfile AddRows CommitAndPush: %w", err)
 	}

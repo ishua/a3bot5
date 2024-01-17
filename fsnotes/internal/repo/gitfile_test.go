@@ -48,7 +48,7 @@ func TestGitFile_ReadRows(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			g := repo.NewGitFile(testFile, tt.git)
+			g := repo.NewGitFile(testFile, "", tt.git)
 			rows, err := g.ReadRows(context.Background())
 			var errStr string
 			if err != nil {
@@ -69,7 +69,7 @@ func TestGitFile_ReadRows_noFile(t *testing.T) {
 		git.On("Pull", mock.Anything).Return(nil)
 		return git
 	}()
-	g := repo.NewGitFile("no_such_file.txt", git)
+	g := repo.NewGitFile("no_such_file.txt", "", git)
 	rows, err := g.ReadRows(context.Background())
 	assert.Empty(t, rows)
 	assert.NotEmpty(t, err)
@@ -119,7 +119,7 @@ func TestGitFile_AddRows(t *testing.T) {
 		git.On("CommitAndPush", mock.Anything, mock.Anything).Return(nil)
 		return git
 	}()
-	g := repo.NewGitFile(tempTestFile, git)
+	g := repo.NewGitFile(tempTestFile, "", git)
 	g.AddRows(context.Background(), []string{"line4", "line5"})
 	rows, err := g.ReadRows(context.Background())
 	if err != nil {

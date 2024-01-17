@@ -42,12 +42,16 @@ func (r *Repo) Pull(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("pull create worktree: %w", err)
 	}
-	return w.Pull(&git.PullOptions{
+	err = w.Pull(&git.PullOptions{
 		Auth: &http.BasicAuth{
 			Username: r.Username, // yes, this can be anything except an empty string
 			Password: r.Token,
 		},
 		RemoteName: "origin"})
+	if err.Error() == "already up-to-date" {
+		err = nil
+	}
+	return err
 }
 
 func (r *Repo) CommitAndPush(ctx context.Context, path []string) error {
@@ -62,7 +66,7 @@ func (r *Repo) CommitAndPush(ctx context.Context, path []string) error {
 		}
 	}
 
-	_, err = w.Commit("example go-git commit", &git.CommitOptions{
+	_, err = w.Commit("fsnotes bots commit", &git.CommitOptions{
 		Author: &object.Signature{
 			Name:  r.Username,
 			Email: "hnas@a3b.me",

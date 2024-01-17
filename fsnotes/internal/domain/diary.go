@@ -35,7 +35,7 @@ func (d *Diary) Add(ctx context.Context, now time.Time, theme string, text strin
 		newStrings = append(newStrings, h2)
 	}
 
-	newS := "-" + theme + " " + text
+	newS := "- " + theme + " " + text
 	newStrings = append(newStrings, newS)
 	err = d.repo.AddRows(ctx, newStrings)
 	if err != nil {
@@ -46,7 +46,7 @@ func (d *Diary) Add(ctx context.Context, now time.Time, theme string, text strin
 }
 
 func isH2NotExist(h2 string, dstrings []string) bool {
-	for i := len(dstrings); i == 0; i-- {
+	for i := len(dstrings) - 1; i >= 0; i-- {
 		if dstrings[i] == h2 {
 			return false
 		}

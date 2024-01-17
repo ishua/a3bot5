@@ -23,7 +23,8 @@ const helpText = `This is help for /note command
  - /note diary add 5bx <text>
  - /note diary add entry <text>
  - /note diary help
- - synonyms: diary = d, add=a, entry=e, 5bx=5`
+ - /note quick <text>
+ - synonyms: diary = d, add=a, entry=e, 5bx=5, quick=q`
 
 type Note struct {
 	Theme string
@@ -81,6 +82,7 @@ func (m *Model) DoJob(ctx context.Context, msgStr string) {
 			replyText = "notes added"
 		}
 	}
+	fmt.Println(replyText)
 
 	nMsg := Msg{
 		Command:          msg.Command,
@@ -133,6 +135,9 @@ func (m *Msg) ParseCommand() (Note, error) {
 
 		}
 		if texts[2] == "list" || texts[2] == "l" {
+			return Note{}, fmt.Errorf("Not working")
+		}
+		if texts[2] == "quick" || texts[2] == "q" {
 			return Note{}, fmt.Errorf("Not working")
 		}
 	}

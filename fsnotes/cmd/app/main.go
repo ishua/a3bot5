@@ -6,6 +6,8 @@ import (
 	"github.com/cristalhq/aconfig"
 	"github.com/cristalhq/aconfig/aconfigyaml"
 	"github.com/ishua/a3bot5/fsnotes/internal/clients/mygit"
+	"github.com/ishua/a3bot5/fsnotes/internal/domain"
+	"github.com/ishua/a3bot5/fsnotes/internal/repo"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -15,6 +17,7 @@ type MyConfig struct {
 	RepoPath        string `default:"data/fsnotes" usage:" path to repository fsnotest"`
 	RepoUrl         string `required:"true"`
 	RepoAccessToken string `env:"REPOACCESSTOKEN" required:"true"`
+	RepoDiaryPath   string `required:"true"`
 }
 
 type Pubsub struct {
@@ -22,9 +25,10 @@ type Pubsub struct {
 }
 
 var (
-	cfg  MyConfig
-	rdb  *Pubsub
-	repo *mygit.Repo
+	cfg    MyConfig
+	rdb    *Pubsub
+	myGit  *mygit.Repo
+	myRepo *repo.GitFile
 )
 
 // init config
@@ -56,10 +60,10 @@ func init() {
 // 	}
 // }
 
-// init repo
+// init git
 func init() {
 	var err error
-	repo, err = mygit.NewClient(cfg.RepoPath, cfg.RepoUrl, cfg.RepoAccessToken)
+	myGit, err = mygit.NewClient(cfg.RepoPath, cfg.RepoUrl, cfg.RepoAccessToken)
 	if err != nil {
 		panic(err)
 	}
@@ -68,9 +72,17 @@ func init() {
 func main() {
 
 	ctx := context.Background()
-
-	err := repo.Pull(ctx)
-	if err != nil {
-		println(err)
+	myRepo = repo.NewGitFile(cfg.RepoPath, cfg.RepoDiaryPath, myGit)
+	d := domain.NewDiary(myRepo)
+	m := domain.NewModel(d, Test{})
+	m.DoJob(ctx, `
+	{
+		"text":"/note diary add entry 2"
 	}
+	`)
 }
+
+type Test struct {
+}
+
+func (r Test) Pub(ctx context.Context, value string) {}
