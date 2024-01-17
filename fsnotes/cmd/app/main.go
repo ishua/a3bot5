@@ -87,7 +87,6 @@ func main() {
 	ch := pubsub.Channel()
 
 	for msg := range ch {
-		log.Println(msg.Payload)
 		go m.DoJob(ctx, msg.Payload)
 	}
 }
