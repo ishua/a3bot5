@@ -28,6 +28,9 @@ func NewGitFile(pathRepo, pathToFile string, git Gitter) *GitFile {
 }
 
 func (g *GitFile) ReadRows(ctx context.Context) ([]string, error) {
+	if g.git == nil {
+		return nil, fmt.Errorf("strange error try agein")
+	}
 	err := g.git.Pull(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("gitfile ReadRows pull: %w", err)
