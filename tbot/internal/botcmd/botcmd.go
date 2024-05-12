@@ -36,7 +36,7 @@ type Command struct {
 	channel string
 }
 
-func (c *CmdRouter) Send(ctx context.Context, msg Message, allowCommands []string) error {
+func (c *CmdRouter) Send(ctx context.Context, msg Message, allowCommands []string, myChannel string) error {
 
 	commandText := msg.Text
 	if len(commandText) == 0 {
@@ -45,9 +45,12 @@ func (c *CmdRouter) Send(ctx context.Context, msg Message, allowCommands []strin
 		}
 		commandText = msg.Caption
 	}
-	command, err := getCommand(commandText, allowCommands)
+	command, err := getCommand(commandText, allowCommands, myChannel)
 	if err != nil {
 		return err
+	}
+	if command.text == "/help" {
+		msg.ReplyText = getHelpText()
 	}
 	q := schema.ChannelMsg{
 		Command:          command.text,
@@ -69,7 +72,7 @@ func (c *CmdRouter) Send(ctx context.Context, msg Message, allowCommands []strin
 	return c.publisher.Pub(ctx, command.channel, string(payload))
 }
 
-func getCommand(str string, allowCommands []string) (Command, error) {
+func getCommand(str string, allowCommands []string, myChannel string) (Command, error) {
 	var c Command
 	s := strings.Split(str, " ")
 	if len(s) < 1 {
@@ -91,6 +94,9 @@ func getCommand(str string, allowCommands []string) (Command, error) {
 	case "/note", "note", "n", "N", "Note":
 		c.text = "/note"
 		c.channel = "fsnotes"
+	case "/help", "help", "h":
+		c.text = "/help"
+		c.channel = myChannel
 	}
 
 	if c.text == "" {
@@ -104,4 +110,8 @@ func getCommand(str string, allowCommands []string) (Command, error) {
 	}
 
 	return Command{}, fmt.Errorf("deny command")
+}
+
+func getHelpText() string {
+	return "my commands: \n/rate_usd\n/rate_eur\n/y2a\n/torrent\n/note"
 }

@@ -163,7 +163,7 @@ func run(ctx context.Context) error {
 				ReplyText:        "",
 				FileUrl:          fileUrl,
 			}
-			err = botCmd.Send(context.Background(), bmsg, allowCommands)
+			err = botCmd.Send(context.Background(), bmsg, allowCommands, cfg.SubChannel)
 
 			if err != nil {
 				errStr := "wrong route message " + err.Error()
