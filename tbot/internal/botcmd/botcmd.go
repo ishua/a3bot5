@@ -113,5 +113,5 @@ func getCommand(str string, allowCommands []string, myChannel string) (Command, 
 }
 
 func getHelpText() string {
-	return "my commands: \n/rate_usd\n/rate_eur\n/y2a\n/torrent\n/note"
+	return "my commands: \n/rate_usd\n/rate_eur\n/y2a help\n/torrent help\n/note help"
 }
