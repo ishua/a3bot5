@@ -48,9 +48,12 @@ func (r *Repo) Pull(ctx context.Context) error {
 			Password: r.Token,
 		},
 		RemoteName: "origin"})
-	if err.Error() == "already up-to-date" {
-		err = nil
+	if err != nil {
+		if err.Error() == "already up-to-date" {
+			err = nil
+		}
 	}
+
 	return err
 }
 
