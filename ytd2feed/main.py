@@ -54,7 +54,7 @@ if __name__ == '__main__':
             if message["type"] == "message":
                 payload = message["data"]
                 a = app.Answer(payload, cfg.redis, cfg.tbotchannel)
-                fo = cfg.getUserCnf(a.getUserName(), "rss")
+                fo = cfg.getUserCnf(a.getUserName())
                 if fo is None:
                     a.setReply("config not found, user: " + a.getUserName())
                 # start download in background

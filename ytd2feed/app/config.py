@@ -32,9 +32,9 @@ class Conf():
     def tbotchannel( self ) ->str: 
         return self.conf.get("tbotchannel", "tbot")
     
-    def getUserCnf( self, userName: str, feedName: str ) -> dict:
+    def getUserCnf( self, userName: str) -> dict:
         for u in self.users:
-            if u["name"] == userName and u["feedName"] == feedName:
+            if u["name"] == userName:
                 return u
 
         return None
