@@ -16,13 +16,17 @@ def start_download(path2content: str,
     print("try to download")
     fc = app.FeedCreater(path2content, url2content, feedName, feedDescription)
     err = answerer.validateError()
+    msg = "downloaded"
     if err:
         print("err:", answerer.getReply())
         answerer.send()
         return
-    app.download(answerer.getUrl(), format, retries, fc)
+    try:
+        app.download(answerer.getUrl(), format, retries, fc)
+    except:
+        msg = "some error"
 
-    answerer.setReply("downloaded")
+    answerer.setReply(msg)
     answerer.send()
     print("Download complited")
 
