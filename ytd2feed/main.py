@@ -10,6 +10,7 @@ def start_download(path2content: str,
                 feedName: str,
                 feedDescription: str,
                 format: str,
+                retries: int,
                 answerer: app.Answer):
     
     print("try to download")
@@ -19,7 +20,7 @@ def start_download(path2content: str,
         print("err:", answerer.getReply())
         answerer.send()
         return
-    app.download(answerer.getUrl(),format,fc=fc)
+    app.download(answerer.getUrl(), format, retries, fc)
 
     answerer.setReply("downloaded")
     answerer.send()
@@ -63,6 +64,7 @@ if __name__ == '__main__':
                                                                 fo["feedName"], 
                                                                 fo["feedDescription"], 
                                                                 fo["format"], 
+                                                                fo["retries"],
                                                                 a,))
                 proccess.start()
         time.sleep(1)  # be nice to the system :)

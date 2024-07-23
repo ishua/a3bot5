@@ -17,7 +17,7 @@ class PPadd2feed(yt_dlp.postprocessor.PostProcessor):
         return [], info
 
 
-def download(url: str, format: str, fc: FeedCreater):
+def download(url: str, format: str, retries: int, fc: FeedCreater):
 
     filename = fc.getFileName()
     filepath = str(os.path.join(fc.getPath2content(),
@@ -27,7 +27,7 @@ def download(url: str, format: str, fc: FeedCreater):
     ydl_opts = {
         'outtmpl': filepath,
         'format': format,
-        'retries': 20,
+        'retries': retries,
         'sleep-interval': 10,
         'http_headers': {'Referer': 'https://www.google.com'}
     }

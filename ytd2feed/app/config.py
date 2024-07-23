@@ -32,6 +32,10 @@ class Conf():
     def tbotchannel( self ) ->str: 
         return self.conf.get("tbotchannel", "tbot")
     
+    @property
+    def retries( self ) ->int: 
+        return self.conf.get("retries", 20)
+    
     def getUserCnf( self, userName: str) -> dict:
         for u in self.users:
             if u["name"] == userName:
