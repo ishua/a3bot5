@@ -27,6 +27,8 @@ def download(url: str, format: str, fc: FeedCreater):
     ydl_opts = {
         'outtmpl': filepath,
         'format': format,
+        'retries': 20,
+        'sleep-interval': 10,
         'http_headers': {'Referer': 'https://www.google.com'}
     }
 
