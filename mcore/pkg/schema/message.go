@@ -1,8 +1,11 @@
 package schema
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strconv"
+)
 
-type ChannelMsg struct {
+type TelegramMsg struct {
 	Command          string `json:"command"`
 	UserName         string `json:"userName"`
 	MsgId            int    `json:"msgId"`
@@ -12,15 +15,20 @@ type ChannelMsg struct {
 	ReplyText        string `json:"replyText"`
 	Caption          string `json:"caption"`
 	FileUrl          string `json:"fileUrl"`
+	QueueName        string `json:"queueName"`
 }
 
-func (m *ChannelMsg) MarshalBinary() ([]byte, error) {
+func (m *TelegramMsg) MarshalBinary() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-func (m *ChannelMsg) UnmarshalBinary(data []byte) error {
+func (m *TelegramMsg) UnmarshalBinary(data []byte) error {
 	if err := json.Unmarshal(data, &m); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (m *TelegramMsg) String() string {
+	return "MsgId: " + strconv.Itoa(m.MsgId)
 }
