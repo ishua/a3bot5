@@ -13,15 +13,13 @@ import (
 )
 
 type MyConfig struct {
-	Redis string `default:"redis:6379" env:"REDIS" usage:"connect str to redis"`
-	Debug bool   `default:"false" usage:"turn on debug mode"`
+	Redis      string   `default:"redis:6379" env:"REDIS" usage:"connect str to redis"`
+	ListenPort string   `default:":8080" usage:"port where start http rest"`
+	Debug      bool     `default:"false" usage:"turn on debug mode"`
+	Secrets    []string `default:"mysecret,mysecret2" usage:"secrets for http connect header 'secret'"`
 }
 
 var cfg MyConfig
-
-//очередь для хранения заданий
-//ручку для того что бы положить задание
-//ручку что бы взять задание
 
 func main() {
 
@@ -49,10 +47,25 @@ func main() {
 	server := mcsrv.NewSrvHandlers(md)
 
 	mux.HandleFunc("POST /add-msg/", server.AddMsg)
+	mux.HandleFunc("POST /get-msg/", server.GetMsg)
 
-	err := http.ListenAndServe(":8080", mux)
+	log.Println("start server port" + cfg.ListenPort)
+	err := http.ListenAndServe(cfg.ListenPort, myMiddle(mux, cfg.Secrets))
 	if err != nil {
 		panic(err)
 	}
 
+}
+
+func myMiddle(next http.Handler, secrets []string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		secret := r.Header.Get("secret")
+		for _, s := range secrets {
+			if s == secret {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	})
 }
