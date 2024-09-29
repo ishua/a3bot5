@@ -1,9 +1,11 @@
 POST http://localhost:8080/add-msg/
 content-type: application/json
-secret: secret1
+secret: mysecret2
 
 {
     "command": "some",
     "msgId": 3,
-    "queueName": "test1"
+    "queueName": "test1",
+    "userName": "someUser",
+    
 }
