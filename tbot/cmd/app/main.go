@@ -9,13 +9,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cristalhq/aconfig"
+	"github.com/cristalhq/aconfig/aconfigyaml"
 	"github.com/ishua/a3bot5/libs/closer"
 	"github.com/ishua/a3bot5/tbot/internal/botcmd"
 	"github.com/ishua/a3bot5/tbot/internal/schema"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/cristalhq/aconfig"
-	"github.com/cristalhq/aconfig/aconfigyaml"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -107,13 +107,29 @@ func init() {
 }
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	if err := run(ctx); err != nil {
-		log.Fatal(err)
-	}
+	// if err := run(ctx); err != nil {
+	// 	log.Fatal(err)
+	// }
+	log.Println("method try")
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	run2(ctx, ticker)
 
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Ожидаем сигнала
+	sig := <-sigChan
+	log.Printf("Received signal: %s. Stopping...\n", sig)
+
+	// Вызываем отмену контекста
+	cancel()
+
+	// Ждем немного, чтобы дать время на завершение горутины
+	time.Sleep(1 * time.Second)
+	log.Println("Program has stopped.")
 }
 
 func run(ctx context.Context) error {
@@ -212,6 +228,23 @@ func run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func run2(ctx context.Context, ticker *time.Ticker) {
+	log.Println("method st")
+
+	go func() {
+		for {
+			select {
+			case t := <-ticker.C:
+				fmt.Println(t)
+			case <-ctx.Done():
+				log.Println("Stopping message check")
+				return
+			}
+		}
+	}()
+
 }
 
 func botSendErr(errStr string, chatId int64, replyId int) {
