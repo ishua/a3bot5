@@ -3,32 +3,42 @@ package botcmd
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
-	"github.com/ishua/a3bot5/tbot/internal/schema"
+	"github.com/ishua/a3bot5/mcore/pkg/schema"
 )
 
-type publisher interface {
-	Pub(ctx context.Context, channel, value string) error
+type UserSettings struct {
+	Name     string
+	Commands []string
 }
 
 type CmdRouter struct {
-	publisher publisher
+	userSettings []UserSettings
+	selfQueue    string
+	queue        queue
+	telegram     telegramer
 }
 
-func NewCmdRouter(p publisher) *CmdRouter {
-	return &CmdRouter{publisher: p}
+type queue interface {
+	AddMsg(ctx context.Context, msg schema.TelegramMsg) error
 }
 
-type Message struct {
-	UserName         string
-	MsgId            int
-	ReplyToMessageID int
-	ChatId           int64
-	Text             string
-	Caption          string
-	ReplyText        string
-	FileUrl          string
+type telegramer interface {
+	SendMsg(msgText string, chatId int64, replyId int)
+}
+
+func NewCmdRouter(us []UserSettings, selfQueue string) *CmdRouter {
+	return &CmdRouter{userSettings: us, selfQueue: selfQueue}
+}
+
+func (c *CmdRouter) RegQueue(q queue) {
+	c.queue = q
+}
+
+func (c *CmdRouter) RegTelegram(t telegramer) {
+	c.telegram = t
 }
 
 type Command struct {
@@ -36,8 +46,17 @@ type Command struct {
 	channel string
 }
 
-func (c *CmdRouter) Send(ctx context.Context, msg Message, allowCommands []string, myChannel string) error {
+func (c *CmdRouter) Send2Telegram(ctx context.Context, msg schema.TelegramMsg) {
+	if c.telegram == nil {
+		log.Fatal("cmdRouter doesn't have telegram")
+	}
+	c.telegram.SendMsg(msg.ReplyText, msg.ChatId, msg.ReplyToMessageID)
+}
 
+func (c *CmdRouter) Add2Queue(ctx context.Context, msg schema.TelegramMsg) error {
+	if c.queue == nil {
+		log.Fatal("cmdRouter doesn't have queue")
+	}
 	commandText := msg.Text
 	if len(commandText) == 0 {
 		if len(msg.Caption) == 0 {
@@ -45,73 +64,75 @@ func (c *CmdRouter) Send(ctx context.Context, msg Message, allowCommands []strin
 		}
 		commandText = msg.Caption
 	}
-	command, err := getCommand(commandText, allowCommands, myChannel)
+
+	allowCommands := c.getUserCommands(msg.UserName)
+	if len(allowCommands) == 0 {
+		return fmt.Errorf("botrouter: user %s doesn't has allow commands", msg.UserName)
+	}
+
+	command, err := c.getCommand(commandText, allowCommands)
 	if err != nil {
 		return err
 	}
+	msg.Command = command.text
+	msg.QueueName = command.channel
+
 	if command.text == "/help" {
 		msg.ReplyText = getHelpText()
 	}
-	q := schema.ChannelMsg{
-		Command:          command.text,
-		UserName:         msg.UserName,
-		MsgId:            msg.MsgId,
-		ReplyToMessageID: msg.ReplyToMessageID,
-		ChatId:           msg.ChatId,
-		Text:             msg.Text,
-		ReplyText:        msg.ReplyText,
-		Caption:          msg.Caption,
-		FileUrl:          msg.FileUrl,
-	}
 
-	payload, err := q.MarshalBinary()
-	if err != nil {
-		return fmt.Errorf("marshal err:" + err.Error())
-	}
-
-	return c.publisher.Pub(ctx, command.channel, string(payload))
+	return c.queue.AddMsg(ctx, msg)
 }
 
-func getCommand(str string, allowCommands []string, myChannel string) (Command, error) {
-	var c Command
+func (c *CmdRouter) getCommand(str string, allowCommands []string) (Command, error) {
+	var cmd Command
 	s := strings.Split(str, " ")
 	if len(s) < 1 {
-		return c, fmt.Errorf("wrong command")
+		return cmd, fmt.Errorf("getCommand: wrong command")
 	}
 	switch s[0] {
 	case "/rate_usd", "usd":
-		c.text = "/rate_usd"
-		c.channel = "restjobs"
+		cmd.text = "/rate_usd"
+		cmd.channel = "restjobs"
 	case "/rate_eur", "eur":
-		c.text = "/rate_eur"
-		c.channel = "restjobs"
+		cmd.text = "/rate_eur"
+		cmd.channel = "restjobs"
 	case "/y2a", "y", "Y":
-		c.text = "/y2a"
-		c.channel = "ytd2feed"
+		cmd.text = "/y2a"
+		cmd.channel = "ytd2feed"
 	case "/torrent", "torrent", "t", "T":
-		c.text = "/torrent"
-		c.channel = "transmission"
+		cmd.text = "/torrent"
+		cmd.channel = "transmission"
 	case "/note", "note", "n", "N", "Note":
-		c.text = "/note"
-		c.channel = "fsnotes"
+		cmd.text = "/note"
+		cmd.channel = "fsnotes"
 	case "/help", "help", "h":
-		c.text = "/help"
-		c.channel = myChannel
+		cmd.text = "/help"
+		cmd.channel = c.selfQueue
 	}
 
-	if c.text == "" {
-		return c, fmt.Errorf("command not found")
+	if cmd.text == "" {
+		return cmd, fmt.Errorf("getCommand: command not found")
 	}
 
 	for _, command := range allowCommands {
-		if command == c.text {
-			return c, nil
+		if command == cmd.text {
+			return cmd, nil
 		}
 	}
 
-	return Command{}, fmt.Errorf("deny command")
+	return Command{}, fmt.Errorf("getCommand: deny command")
 }
 
 func getHelpText() string {
 	return "my commands: \n/rate_usd\n/rate_eur\n/y2a help\n/torrent help\n/note help"
+}
+
+func (c *CmdRouter) getUserCommands(userName string) []string {
+	for _, user := range c.userSettings {
+		if user.Name == userName {
+			return user.Commands
+		}
+	}
+	return []string{}
 }

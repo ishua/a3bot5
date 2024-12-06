@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -11,12 +10,9 @@ import (
 
 	"github.com/cristalhq/aconfig"
 	"github.com/cristalhq/aconfig/aconfigyaml"
-	"github.com/ishua/a3bot5/libs/closer"
 	"github.com/ishua/a3bot5/tbot/internal/botcmd"
-	"github.com/ishua/a3bot5/tbot/internal/schema"
-	"github.com/redis/go-redis/v9"
-
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/ishua/a3bot5/tbot/internal/client/myredis"
+	"github.com/ishua/a3bot5/tbot/internal/client/mytgclient"
 )
 
 type MyConfig struct {
@@ -30,23 +26,7 @@ type MyConfig struct {
 	} `usage:"allow users to use bot if empty then allows everybody"`
 }
 
-type pubsub struct {
-	*redis.Client
-}
-
-func (r pubsub) Pub(ctx context.Context, channel, value string) error {
-	return r.Publish(ctx, channel, value).Err()
-}
-
 var cfg MyConfig
-var (
-	shutdownTimeout = 5 * time.Second
-	// telegram
-	Bot     *tgbotapi.BotAPI
-	Updates <-chan tgbotapi.Update
-	rdb     pubsub
-	botCmd  botcmd.CmdRouter
-)
 
 // init config
 func init() {
@@ -64,196 +44,40 @@ func init() {
 	}
 }
 
-// init telegram
-func init() {
-	var err error
-	Bot, err = tgbotapi.NewBotAPI(cfg.Token)
-	Bot.Debug = cfg.Debug
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ERROR] Telegram: %s\n", err)
-		os.Exit(1)
-	}
-	log.Printf("[INFO] Authorized: %s", Bot.Self.UserName)
-	// delete webhook
-	dwh := tgbotapi.DeleteWebhookConfig(tgbotapi.DeleteWebhookConfig{DropPendingUpdates: true})
-	_, err = Bot.Request(dwh)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-
-	Updates = Bot.GetUpdatesChan(u)
-	if err != nil {
-		log.Fatalf("[ERROR] Telegram: %s\n", err)
-	}
-}
-
-// init redis
-func init() {
-	log.Println("init redis: " + cfg.Redis)
-	rdb = pubsub{redis.NewClient(&redis.Options{
-		Addr:     cfg.Redis,
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})}
-}
-
-// init botCmd
-func init() {
-	botCmd = *botcmd.NewCmdRouter(rdb)
-}
-
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// if err := run(ctx); err != nil {
-	// 	log.Fatal(err)
-	// }
-	log.Println("method try")
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-	run2(ctx, ticker)
+	// init glue
+	userSettings := make([]botcmd.UserSettings, len(cfg.Users))
+	for idx, cuser := range cfg.Users {
+		userSettings[idx] = botcmd.UserSettings{
+			Name:     cuser.User,
+			Commands: cuser.Commands,
+		}
+	}
+	botcmd := botcmd.NewCmdRouter(userSettings, cfg.SubChannel)
 
+	//init queue client
+	q := myredis.NewRedisClient(cfg.Redis, cfg.SubChannel, botcmd)
+	botcmd.RegQueue(q)
+	//init telegram client
+	t, err := mytgclient.NewTgClient(cfg.Token, cfg.Debug, botcmd)
+	if err != nil {
+		log.Fatal("tg can't connect: " + err.Error())
+	}
+	botcmd.RegTelegram(t)
+
+	//run listners
+	q.ListeningQueue(ctx)
+	t.ListeningTg(ctx)
+
+	// stop service here
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	// Ожидаем сигнала
+	// waiting signal for stop
 	sig := <-sigChan
 	log.Printf("Received signal: %s. Stopping...\n", sig)
-
-	// Вызываем отмену контекста
 	cancel()
-
-	// Ждем немного, чтобы дать время на завершение горутины
 	time.Sleep(1 * time.Second)
 	log.Println("Program has stopped.")
-}
-
-func run(ctx context.Context) error {
-	closer := new(closer.Closer)
-
-	go func() {
-		for update := range Updates {
-			// ignore edited messages
-			if update.Message == nil {
-				continue
-			}
-
-			var allowCommands []string
-			for _, user := range cfg.Users {
-				if user.User == update.Message.Chat.UserName {
-					allowCommands = user.Commands
-				}
-			}
-
-			if len(allowCommands) < 1 {
-				errStr := "user haven't allow commands: " + update.Message.Chat.UserName
-				botSendErr(errStr, update.Message.Chat.ID, update.Message.MessageID)
-				continue
-			}
-
-			var fileUrl string
-			var err error
-			if update.Message.Document != nil {
-				fileUrl, err = Bot.GetFileDirectURL(update.Message.Document.FileID)
-				if err != nil {
-					errStr := "can't get file url " + err.Error()
-					botSendErr(errStr, update.Message.Chat.ID, update.Message.MessageID)
-					continue
-				}
-			}
-			var replyMsgId int
-			if update.Message.ReplyToMessage != nil {
-				replyMsgId = update.Message.ReplyToMessage.MessageID
-			}
-			bmsg := botcmd.Message{
-				UserName:         update.Message.Chat.UserName,
-				MsgId:            update.Message.MessageID,
-				ReplyToMessageID: replyMsgId,
-				ChatId:           update.Message.Chat.ID,
-				Text:             update.Message.Text,
-				Caption:          update.Message.Caption,
-				ReplyText:        "",
-				FileUrl:          fileUrl,
-			}
-			err = botCmd.Send(context.Background(), bmsg, allowCommands, cfg.SubChannel)
-
-			if err != nil {
-				errStr := "wrong route message " + err.Error()
-				botSendErr(errStr, update.Message.Chat.ID, update.Message.MessageID)
-			}
-		}
-	}()
-
-	pubsub := rdb.Subscribe(ctx, cfg.SubChannel)
-	go func() {
-		ch := pubsub.Channel()
-		for msg := range ch {
-			var m schema.ChannelMsg
-			err := m.UnmarshalBinary([]byte(msg.Payload))
-			if err != nil {
-				log.Println("wrong unmarshal msg " + err.Error())
-				continue
-			}
-			msg := tgbotapi.NewMessage(m.ChatId, m.ReplyText)
-			msg.ParseMode = "html"
-			newMsg, err := Bot.Send(msg)
-			if m.MsgId != 0 {
-				msg.ReplyToMessageID = m.MsgId
-			}
-			if err != nil {
-				log.Printf("%d %s", newMsg.MessageID, err.Error())
-			}
-
-		}
-	}()
-
-	closer.Add(func(ctx context.Context) error {
-		pubsub.Close()
-		return nil
-	})
-
-	//waiting
-	<-ctx.Done() // block
-
-	log.Println("shutting down server gracefully")
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-
-	if err := closer.Close(shutdownCtx); err != nil {
-		return fmt.Errorf("closer: %v", err)
-	}
-
-	return nil
-}
-
-func run2(ctx context.Context, ticker *time.Ticker) {
-	log.Println("method st")
-
-	go func() {
-		for {
-			select {
-			case t := <-ticker.C:
-				fmt.Println(t)
-			case <-ctx.Done():
-				log.Println("Stopping message check")
-				return
-			}
-		}
-	}()
-
-}
-
-func botSendErr(errStr string, chatId int64, replyId int) {
-	log.Println(errStr)
-	msg := tgbotapi.NewMessage(chatId, errStr)
-	msg.ParseMode = "html"
-	newMsg, err := Bot.Send(msg)
-	msg.ReplyToMessageID = replyId
-	if err != nil {
-		log.Printf("%d %s", newMsg.MessageID, err.Error())
-	}
 }
