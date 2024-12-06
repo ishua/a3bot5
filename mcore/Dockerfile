@@ -12,5 +12,6 @@ COPY --from=build /etc/ssl/certs/ca-certificates.crt \
      /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /build/app /app
 RUN mkdir /conf
+EXPOSE 8080
 
 ENTRYPOINT ["/app"]
