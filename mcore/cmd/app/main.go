@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -17,9 +18,15 @@ type MyConfig struct {
 	ListenPort string   `default:":8080" usage:"port where start http rest"`
 	Debug      bool     `default:"false" usage:"turn on debug mode"`
 	Secrets    []string `default:"mysecret,mysecret2" usage:"secrets for http connect header 'secret'"`
+	RootPath   string   `default:"/api" usage:"path begin from this string"`
 }
 
-var cfg MyConfig
+var (
+	cfg       MyConfig
+	addMsgUrl string
+	getMsgUrl string
+	pingUrl   string
+)
 
 func main() {
 
@@ -46,9 +53,13 @@ func main() {
 	mux := http.NewServeMux()
 	server := mcsrv.NewSrvHandlers(md)
 
-	mux.HandleFunc("POST /add-msg/", server.AddMsg)
-	mux.HandleFunc("POST /get-msg/", server.GetMsg)
-	mux.HandleFunc("GET /ping/", server.Ping)
+	addMsgUrl = fmt.Sprintf("%s/add-msg/", cfg.RootPath)
+	getMsgUrl = fmt.Sprintf("%s/get-msg/", cfg.RootPath)
+	pingUrl = fmt.Sprintf("%s/ping/", cfg.RootPath)
+
+	mux.HandleFunc("POST "+addMsgUrl, server.AddMsg)
+	mux.HandleFunc("POST "+getMsgUrl, server.GetMsg)
+	mux.HandleFunc("GET "+pingUrl, server.Ping)
 
 	log.Println("start server port" + cfg.ListenPort)
 	err := http.ListenAndServe(cfg.ListenPort, myMiddle(mux, cfg.Secrets))
@@ -61,7 +72,7 @@ func main() {
 func myMiddle(next http.Handler, secrets []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		url := r.URL
-		if url.Path == "/ping/" || url.Path == "/ping" {
+		if url.Path == pingUrl {
 			next.ServeHTTP(w, r)
 			return
 		}
