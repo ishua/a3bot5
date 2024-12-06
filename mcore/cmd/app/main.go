@@ -48,7 +48,7 @@ func main() {
 
 	mux.HandleFunc("POST /add-msg/", server.AddMsg)
 	mux.HandleFunc("POST /get-msg/", server.GetMsg)
-	mux.HandleFunc("Get /ping/", server.Ping)
+	mux.HandleFunc("GET /ping/", server.Ping)
 
 	log.Println("start server port" + cfg.ListenPort)
 	err := http.ListenAndServe(cfg.ListenPort, myMiddle(mux, cfg.Secrets))
@@ -60,6 +60,11 @@ func main() {
 
 func myMiddle(next http.Handler, secrets []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		url := r.URL
+		if url.Path == "/ping/" || url.Path == "/ping" {
+			next.ServeHTTP(w, r)
+			return
+		}
 		secret := r.Header.Get("secret")
 		for _, s := range secrets {
 			if s == secret {
