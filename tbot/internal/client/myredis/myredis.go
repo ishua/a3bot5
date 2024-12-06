@@ -63,3 +63,7 @@ func (c *RedisClient) ListeningQueue(ctx context.Context) {
 		}
 	}()
 }
+
+func (c *RedisClient) RedisPing(ctx context.Context) error {
+	return c.Ping(ctx).Err()
+}
