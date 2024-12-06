@@ -72,7 +72,7 @@ func main() {
 func myMiddle(next http.Handler, secrets []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		url := r.URL
-		if url.Path == pingUrl {
+		if url.Path == pingUrl || url.Path == cfg.RootPath+"/ping" {
 			next.ServeHTTP(w, r)
 			return
 		}
