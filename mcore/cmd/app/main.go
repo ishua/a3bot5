@@ -48,6 +48,7 @@ func main() {
 
 	mux.HandleFunc("POST /add-msg/", server.AddMsg)
 	mux.HandleFunc("POST /get-msg/", server.GetMsg)
+	mux.HandleFunc("Get /ping/", server.Ping)
 
 	log.Println("start server port" + cfg.ListenPort)
 	err := http.ListenAndServe(cfg.ListenPort, myMiddle(mux, cfg.Secrets))

@@ -18,6 +18,20 @@ func NewSrvHandlers(md *domain.MyDomain) *Handlers {
 	return &Handlers{md: md}
 }
 
+func (s *Handlers) Ping(w http.ResponseWriter, req *http.Request) {
+	type PingRes struct {
+		Status string `json:"status"`
+	}
+
+	js, err := json.Marshal(PingRes{Status: "OK"})
+	if err != nil {
+		errResp(w, "marshal msg err: "+err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(js)
+}
+
 func (s *Handlers) AddMsg(w http.ResponseWriter, req *http.Request) {
 
 	type AddMsgReq struct {
