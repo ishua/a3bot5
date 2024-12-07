@@ -22,10 +22,7 @@ type MyConfig struct {
 }
 
 var (
-	cfg       MyConfig
-	addMsgUrl string
-	getMsgUrl string
-	pingUrl   string
+	cfg MyConfig
 )
 
 func main() {
@@ -53,26 +50,24 @@ func main() {
 	mux := http.NewServeMux()
 	server := mcsrv.NewSrvHandlers(md)
 
-	addMsgUrl = fmt.Sprintf("%s/add-msg/", cfg.RootPath)
-	getMsgUrl = fmt.Sprintf("%s/get-msg/", cfg.RootPath)
-	pingUrl = fmt.Sprintf("%s/ping/", cfg.RootPath)
+	addMsgUrl := fmt.Sprintf("%s/add-msg/", cfg.RootPath)
+	getMsgUrl := fmt.Sprintf("%s/get-msg/", cfg.RootPath)
 
 	mux.HandleFunc("POST "+addMsgUrl, server.AddMsg)
 	mux.HandleFunc("POST "+getMsgUrl, server.GetMsg)
-	mux.HandleFunc("GET "+pingUrl, server.Ping)
+	mux.HandleFunc("GET /health/", server.Ping)
 
 	log.Println("start server port" + cfg.ListenPort)
 	err := http.ListenAndServe(cfg.ListenPort, myMiddle(mux, cfg.Secrets))
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-
 }
 
 func myMiddle(next http.Handler, secrets []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		url := r.URL
-		if url.Path == pingUrl || url.Path == cfg.RootPath+"/ping" {
+		if url.Path == "/health/" || url.Path == "/health" {
 			next.ServeHTTP(w, r)
 			return
 		}
