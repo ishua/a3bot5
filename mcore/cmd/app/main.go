@@ -57,14 +57,23 @@ func main() {
 	mux.HandleFunc("POST "+getMsgUrl, server.GetMsg)
 	mux.HandleFunc("GET /health/", server.Ping)
 
+	//add middleware
+	var h http.Handler
+	h = mux
+	if cfg.Debug {
+		log.Println("debug is on")
+		h = middleLog(h)
+	}
+	h = middleAuth(h, cfg.Secrets)
+
 	log.Println("start server port" + cfg.ListenPort)
-	err := http.ListenAndServe(cfg.ListenPort, myMiddle(mux, cfg.Secrets))
+	err := http.ListenAndServe(cfg.ListenPort, h)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func myMiddle(next http.Handler, secrets []string) http.Handler {
+func middleAuth(next http.Handler, secrets []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		url := r.URL
 		if url.Path == "/health/" || url.Path == "/health" {
@@ -79,5 +88,14 @@ func myMiddle(next http.Handler, secrets []string) http.Handler {
 			}
 		}
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	})
+}
+
+func middleLog(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		log.Printf("req method: %s, path: %s", r.Method, r.URL.EscapedPath())
+
+		next.ServeHTTP(w, r)
 	})
 }
