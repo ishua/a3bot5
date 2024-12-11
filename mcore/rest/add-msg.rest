@@ -1,11 +1,11 @@
-POST http://localhost:8080/add-msg/
+@url = http://localhost:8080
+POST {{url}}/api/add-msg/
 content-type: application/json
-secret: mysecret2
+secret: tddDDdfklsjj8884820ljsdhzzzqqq392992992idkjdksfl832uhds94skdh4uhs92SSSSt
 
 {
     "command": "some",
     "msgId": 3,
     "queueName": "test1",
-    "userName": "someUser",
-    
+    "userName": "someUser"
 }

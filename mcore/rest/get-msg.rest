@@ -1,6 +1,7 @@
-POST http://localhost:8080/get-msg/
+@url = http://localhost:8080
+POST {{url}}/api/get-msg/
 content-type: application/json
-secret: mysecret
+secret: tddDDdfklsjj8884820ljsdhzzzqqq392992992idkjdksfl832uhds94skdh4uhs92SSSSt
 
 {
     "queueName": "test1"
