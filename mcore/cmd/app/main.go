@@ -38,6 +38,7 @@ func main() {
 	}
 
 	log.Println("init redis: " + cfg.Redis)
+	log.Printf("secrets len = %d", len(cfg.Secrets))
 	mq := myredis.NewMessageQueue(cfg.Redis)
 
 	ctx := context.Background()
