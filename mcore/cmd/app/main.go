@@ -18,7 +18,7 @@ type MyConfig struct {
 	ListenPort string   `default:":8080" usage:"port where start http rest"`
 	Debug      bool     `default:"false" usage:"turn on debug mode"`
 	Secrets    []string `default:"mysecret,mysecret2" usage:"secrets for http connect header 'secret'"`
-	RootPath   string   `default:"/api" usage:"path begin from this string"`
+	RootPath   string   `default:"" usage:"path begin from this string"`
 }
 
 var (
