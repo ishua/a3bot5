@@ -1,5 +1,6 @@
 debug: false
 listen_port: ":8080"
 root_path: ""
+redis: 192.168.1.2:6379
 secrets: 
   - "test"

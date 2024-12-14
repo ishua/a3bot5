@@ -1,7 +1,7 @@
 @url = http://localhost:8080
-POST {{url}}/api/add-msg/
+POST {{url}}/add-msg/
 content-type: application/json
-secret: tddDDdfklsjj8884820ljsdhzzzqqq392992992idkjdksfl832uhds94skdh4uhs92SSSSt
+secret: test
 
 {
     "command": "some",
