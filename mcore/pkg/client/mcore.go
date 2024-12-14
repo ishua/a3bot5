@@ -1,4 +1,4 @@
-package mcore
+package mcoreclient
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -13,8 +14,9 @@ import (
 )
 
 const (
-	addMsgUrl = ""
-	getMsgUrl = ""
+	addMsgUrl = "/add-msg"
+	getMsgUrl = "/get-msg"
+	timeOut   = 60
 )
 
 type ClientMcore struct {
@@ -29,6 +31,10 @@ func NewClienMcore(addr, secret string) *ClientMcore {
 		secret:  secret,
 		timeout: 10 * time.Second,
 	}
+}
+
+type Telegramer interface {
+	Send2Telegram(ctx context.Context, msg schema.TelegramMsg)
 }
 
 func (c *ClientMcore) AddMsg(ctx context.Context, msg schema.TelegramMsg) error {
@@ -109,4 +115,32 @@ func (c *ClientMcore) doPost(addr string, body []byte) ([]byte, error) {
 		return nil, fmt.Errorf("doPost read body %w", err)
 	}
 	return respBody, nil
+}
+
+func (c *ClientMcore) ListenGetMsg(ctx context.Context, t Telegramer, queueName string) error {
+	timeout := time.Duration(timeOut * time.Second)
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				{
+					log.Println("stopping listen telegram")
+					return
+				}
+			default:
+				{
+					msg, err := c.GetMsg(ctx, queueName)
+					if err != nil {
+						log.Printf("listen %s err: %s", queueName, err.Error())
+						continue
+					}
+					t.Send2Telegram(ctx, msg)
+					time.Sleep(timeout)
+				}
+			}
+		}
+	}()
+
+	return nil
 }
