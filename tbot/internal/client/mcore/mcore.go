@@ -3,12 +3,18 @@ package mcore
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 
 	"github.com/ishua/a3bot5/mcore/pkg/schema"
+)
+
+const (
+	addMsgUrl = ""
+	getMsgUrl = ""
 )
 
 type ClientMcore struct {
@@ -32,24 +38,58 @@ func (c *ClientMcore) AddMsg(ctx context.Context, msg schema.TelegramMsg) error 
 		return fmt.Errorf("addmsg marshal err %w", err)
 	}
 
-	_, err = c.doPost(body) //TODO  сделать обработку полученного овтета, там может быть ошибка
+	respByte, err := c.doPost(addMsgUrl, body)
 	if err != nil {
 		return fmt.Errorf("addmsg doPost: %w", err)
+	}
+
+	var resp schema.Resp
+	err = json.Unmarshal(respByte, &resp)
+	if err != nil {
+		return fmt.Errorf("addmsg unmarshal resp: %w", err)
+	}
+
+	if resp.Status != "OK" {
+		return fmt.Errorf("addmsg err: %s", resp.Error)
 	}
 
 	return nil
 }
 
 func (с *ClientMcore) GetMsg(ctx context.Context, queueName string) (schema.TelegramMsg, error) {
-	return schema.TelegramMsg{}, nil
+	var ret schema.TelegramMsg
+	getMsgReq := schema.GetMsgReq{
+		QueueName: queueName,
+	}
+	body, err := json.Marshal(getMsgReq)
+	if err != nil {
+		return ret, fmt.Errorf("getMsg marshal body: %w", err)
+	}
+
+	respByte, err := с.doPost(getMsgUrl, body)
+	if err != nil {
+		return ret, fmt.Errorf("getMsg doPost: %w", err)
+	}
+
+	var resp schema.GetMsgRes
+	err = json.Unmarshal(respByte, &resp)
+	if err != nil {
+		return ret, fmt.Errorf("getMsg Unmarshal: %w", err)
+	}
+
+	if resp.Error != "" {
+		return ret, fmt.Errorf("getMsg error status: %s", resp.Error)
+	}
+
+	return resp.Data, nil
 }
 
-func (c *ClientMcore) doPost(body []byte) ([]byte, error) {
+func (c *ClientMcore) doPost(addr string, body []byte) ([]byte, error) {
 	client := &http.Client{
 		Timeout: c.timeout,
 	}
 
-	req, err := http.NewRequest("POST", c.addr, bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", c.addr+addr, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("doPost NewRequest err %w", err)
 	}
