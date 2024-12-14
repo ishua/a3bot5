@@ -1,2 +1,5 @@
 debug: false
-# redis: redis:6379
+listen_port: ":8080"
+root_path: ""
+secrets: 
+  - "test"

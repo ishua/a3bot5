@@ -59,12 +59,18 @@ func main() {
 
 	//init queue client
 	q := myredis.NewRedisClient(cfg.Redis, cfg.SubChannel, botcmd)
-	botcmd.RegQueue(q)
+	err := q.RedisPing(ctx)
+	if err != nil {
+		log.Fatal("redis ping error: " + err.Error())
+	}
+
 	//init telegram client
 	t, err := mytgclient.NewTgClient(cfg.Token, cfg.Debug, botcmd)
 	if err != nil {
 		log.Fatal("tg can't connect: " + err.Error())
 	}
+
+	botcmd.RegQueue(q)
 	botcmd.RegTelegram(t)
 
 	//run listners

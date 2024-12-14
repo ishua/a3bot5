@@ -1,6 +1,7 @@
-POST https://t.a3b.me:8989/get-msg/
+@url = http://localhost:8080
+POST {{url}}/api/get-msg/
 content-type: application/json
-secret: !ouC!6s5YuViP!RQylqkq5FzeYs*W2!
+secret: tddDDdfklsjj8884820ljsdhzzzqqq392992992idkjdksfl832uhds94skdh4uhs92SSSSt
 
 {
     "queueName": "test1"

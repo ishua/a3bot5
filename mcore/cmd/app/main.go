@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -17,9 +18,12 @@ type MyConfig struct {
 	ListenPort string   `default:":8080" usage:"port where start http rest"`
 	Debug      bool     `default:"false" usage:"turn on debug mode"`
 	Secrets    []string `default:"mysecret,mysecret2" usage:"secrets for http connect header 'secret'"`
+	RootPath   string   `default:"" usage:"path begin from this string"`
 }
 
-var cfg MyConfig
+var (
+	cfg MyConfig
+)
 
 func main() {
 
@@ -34,6 +38,7 @@ func main() {
 	}
 
 	log.Println("init redis: " + cfg.Redis)
+	log.Printf("secrets len = %d", len(cfg.Secrets))
 	mq := myredis.NewMessageQueue(cfg.Redis)
 
 	ctx := context.Background()
@@ -46,19 +51,36 @@ func main() {
 	mux := http.NewServeMux()
 	server := mcsrv.NewSrvHandlers(md)
 
-	mux.HandleFunc("POST /add-msg/", server.AddMsg)
-	mux.HandleFunc("POST /get-msg/", server.GetMsg)
+	addMsgUrl := fmt.Sprintf("%s/add-msg/", cfg.RootPath)
+	getMsgUrl := fmt.Sprintf("%s/get-msg/", cfg.RootPath)
+
+	mux.HandleFunc("POST "+addMsgUrl, server.AddMsg)
+	mux.HandleFunc("POST "+getMsgUrl, server.GetMsg)
+	mux.HandleFunc("GET /health/", server.Ping)
+
+	//add middleware
+	var h http.Handler
+	h = mux
+	if cfg.Debug {
+		log.Println("debug is on")
+		h = middleLog(h)
+	}
+	h = middleAuth(h, cfg.Secrets)
 
 	log.Println("start server port" + cfg.ListenPort)
-	err := http.ListenAndServe(cfg.ListenPort, myMiddle(mux, cfg.Secrets))
+	err := http.ListenAndServe(cfg.ListenPort, h)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-
 }
 
-func myMiddle(next http.Handler, secrets []string) http.Handler {
+func middleAuth(next http.Handler, secrets []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		url := r.URL
+		if url.Path == "/health/" || url.Path == "/health" {
+			next.ServeHTTP(w, r)
+			return
+		}
 		secret := r.Header.Get("secret")
 		for _, s := range secrets {
 			if s == secret {
@@ -67,5 +89,14 @@ func myMiddle(next http.Handler, secrets []string) http.Handler {
 			}
 		}
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	})
+}
+
+func middleLog(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		log.Printf("req method: %s, path: %s", r.Method, r.URL.EscapedPath())
+
+		next.ServeHTTP(w, r)
 	})
 }
