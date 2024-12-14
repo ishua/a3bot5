@@ -32,3 +32,23 @@ func (m *TelegramMsg) UnmarshalBinary(data []byte) error {
 func (m *TelegramMsg) String() string {
 	return "MsgId: " + strconv.Itoa(m.MsgId)
 }
+
+type GetMsgReq struct {
+	QueueName string `json:"queueName"`
+}
+
+type GetMsgRes struct {
+	Data   TelegramMsg `json:"telegramMsg"`
+	Empty  bool        `json:"empty"`
+	Error  string      `json:"error"`
+	Status string      `json:"status"`
+}
+
+type Resp struct {
+	Error  string `json:"error"`
+	Status string `json:"status"`
+}
+
+type AddMsgReq struct {
+	TelegramMsg
+}

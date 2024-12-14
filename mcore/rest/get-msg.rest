@@ -1,6 +1,6 @@
-POST http://localhost:8080/get-msg/
+POST https://t.a3b.me:8989/get-msg/
 content-type: application/json
-secret: mysecret
+secret: !ouC!6s5YuViP!RQylqkq5FzeYs*W2!
 
 {
     "queueName": "test1"

@@ -3,6 +3,7 @@ package mcsrv
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -20,41 +21,36 @@ func NewSrvHandlers(md *domain.MyDomain) *Handlers {
 
 func (s *Handlers) AddMsg(w http.ResponseWriter, req *http.Request) {
 
-	type AddMsgReq struct {
-		schema.TelegramMsg
-	}
-
-	var amr AddMsgReq
+	var amr schema.AddMsgReq
 	err := json.NewDecoder(req.Body).Decode(&amr)
+	var resp []byte
+	w.Header().Set("Content-Type", "application/json")
 	if err != nil {
-		errResp(w, "body AddMsg decode err: "+err.Error())
+		resp = getErrResp(fmt.Errorf("body AddMsg decode err: %w", err))
+		w.Write(resp)
 		return
 	}
 
 	ctx := context.Background()
 	err = s.md.AddMessageToQueue(ctx, amr.TelegramMsg)
+
 	if err != nil {
-		errResp(w, "add to queue err: "+err.Error())
+		resp = getErrResp(fmt.Errorf("add to queue err: %w", err))
+		w.Write(resp)
 		return
 	}
+	w.Write(getOkResp())
 }
 
 func (s *Handlers) GetMsg(w http.ResponseWriter, req *http.Request) {
 
-	type GetMsgReq struct {
-		QueueName string `json:"queueName"`
-	}
-
-	type GetMsgRes struct {
-		Data  schema.TelegramMsg `json:"telegramMsg"`
-		Emty  bool               `json:"emty"`
-		Error string             `json:"error"`
-	}
-
-	var gmr GetMsgReq
+	var gmr schema.GetMsgReq
 	err := json.NewDecoder(req.Body).Decode(&gmr)
+	var resp []byte
+	w.Header().Set("Content-Type", "application/json")
 	if err != nil {
-		errResp(w, "body GetMsg decode err: "+err.Error())
+		resp = getErrResp(fmt.Errorf("body GetMsg decode err: %w", err))
+		w.Write(resp)
 		return
 	}
 
@@ -62,37 +58,41 @@ func (s *Handlers) GetMsg(w http.ResponseWriter, req *http.Request) {
 	msg, err := s.md.GetMessageFromQueue(ctx, gmr.QueueName)
 	if err != nil {
 		if err.Error() == "redis: nil" {
-			js, err := json.Marshal(GetMsgRes{Emty: true})
+			js, err := json.Marshal(schema.GetMsgRes{Empty: true, Status: "OK"})
 			if err != nil {
-				errResp(w, "marshal msg err: "+err.Error())
+				resp = getErrResp(fmt.Errorf("marshal msg err: %w", err))
+				w.Write(resp)
 				return
 			}
-			w.Header().Set("Content-Type", "application/json")
 			w.Write(js)
 			return
 		}
-		errResp(w, "get from queue:"+gmr.QueueName+" err: "+err.Error())
+		resp = getErrResp(fmt.Errorf("get from queue: %s err: %w", gmr.QueueName, err))
+		w.Write(resp)
 		return
 	}
 
-	js, err := json.Marshal(GetMsgRes{Data: msg})
+	js, err := json.Marshal(schema.GetMsgRes{Data: msg, Status: "OK"})
 	if err != nil {
-		errResp(w, "marshal msg err: "+err.Error())
+		resp = getErrResp(fmt.Errorf("marshal msg err: %w", err))
+		w.Write(resp)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
 }
 
-func errResp(w http.ResponseWriter, err string) {
-	log.Println("handler: " + err)
-	type errResp struct {
-		Error string `json:"error"`
-	}
-	w.Header().Set("Content-Type", "application/json")
-
-	js, _ := json.Marshal(errResp{
-		Error: err,
+func getOkResp() []byte {
+	ok, _ := json.Marshal(schema.Resp{
+		Status: "OK",
 	})
-	w.Write(js)
+	return ok
+}
+
+func getErrResp(err error) []byte {
+	log.Println("handler: " + err.Error())
+	ok, _ := json.Marshal(schema.Resp{
+		Error:  err.Error(),
+		Status: "error",
+	})
+	return ok
 }

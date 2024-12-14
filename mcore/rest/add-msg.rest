@@ -1,6 +1,6 @@
-POST http://localhost:8080/add-msg/
+POST https://t.a3b.me/mcore
 content-type: application/json
-secret: mysecret2
+secret: !ouC!6s5YuViP!RQylqkq5FzeYs*W2!
 
 {
     "command": "some",
