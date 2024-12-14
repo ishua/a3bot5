@@ -24,11 +24,7 @@ func (s *Handlers) Ping(w http.ResponseWriter, req *http.Request) {
 		Status string `json:"status"`
 	}
 
-	js, err := json.Marshal(PingRes{Status: "OK"})
-	if err != nil {
-		errResp(w, "marshal msg err: "+err.Error())
-		return
-	}
+	js, _ := json.Marshal(PingRes{Status: "OK"})
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
 }
