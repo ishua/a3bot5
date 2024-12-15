@@ -16,6 +16,7 @@ import (
 const (
 	addMsgUrl = "/add-msg"
 	getMsgUrl = "/get-msg"
+	healthUrl = "/health"
 	timeOut   = 60
 )
 
@@ -31,10 +32,6 @@ func NewClienMcore(addr, secret string) *ClientMcore {
 		secret:  secret,
 		timeout: 10 * time.Second,
 	}
-}
-
-type Telegramer interface {
-	Send2Telegram(ctx context.Context, msg schema.TelegramMsg)
 }
 
 func (c *ClientMcore) AddMsg(ctx context.Context, msg schema.TelegramMsg) error {
@@ -90,6 +87,19 @@ func (с *ClientMcore) GetMsg(ctx context.Context, queueName string) (schema.Tel
 	return resp.Data, nil
 }
 
+func (c *ClientMcore) Health(ctx context.Context) error {
+	resp, err := http.Get(healthUrl)
+	if err != nil {
+		return fmt.Errorf("health err: %w", err)
+	}
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("health err status code: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
 func (c *ClientMcore) doPost(addr string, body []byte) ([]byte, error) {
 	client := &http.Client{
 		Timeout: c.timeout,
@@ -117,7 +127,7 @@ func (c *ClientMcore) doPost(addr string, body []byte) ([]byte, error) {
 	return respBody, nil
 }
 
-func (c *ClientMcore) ListenGetMsg(ctx context.Context, t Telegramer, queueName string) error {
+func (c *ClientMcore) ListeningQueue(ctx context.Context, t schema.TelegramSender, queueName string) {
 	timeout := time.Duration(timeOut * time.Second)
 
 	go func() {
@@ -135,12 +145,11 @@ func (c *ClientMcore) ListenGetMsg(ctx context.Context, t Telegramer, queueName 
 						log.Printf("listen %s err: %s", queueName, err.Error())
 						continue
 					}
-					t.Send2Telegram(ctx, msg)
+					t.Send(ctx, msg)
 					time.Sleep(timeout)
 				}
 			}
 		}
 	}()
 
-	return nil
 }

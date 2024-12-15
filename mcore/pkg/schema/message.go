@@ -1,9 +1,14 @@
 package schema
 
 import (
+	"context"
 	"encoding/json"
 	"strconv"
 )
+
+type TelegramSender interface {
+	Send(ctx context.Context, msg TelegramMsg)
+}
 
 type TelegramMsg struct {
 	Command          string `json:"command"`

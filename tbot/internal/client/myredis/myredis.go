@@ -11,23 +11,15 @@ import (
 
 type RedisClient struct {
 	*redis.Client
-	channel    string
-	telegramer Telegramer
 }
 
-type Telegramer interface {
-	Send2Telegram(ctx context.Context, msg schema.TelegramMsg)
-}
-
-func NewRedisClient(adr, channel string, t Telegramer) *RedisClient {
+func NewRedisClient(adr string) *RedisClient {
 	return &RedisClient{
 		redis.NewClient(&redis.Options{
 			Addr:     adr,
 			Password: "", // no password set
 			DB:       0,  // use default DB
 		}),
-		channel,
-		t,
 	}
 }
 
@@ -39,10 +31,10 @@ func (c *RedisClient) AddMsg(ctx context.Context, msg schema.TelegramMsg) error 
 	return c.Publish(ctx, msg.QueueName, payload).Err()
 }
 
-func (c *RedisClient) ListeningQueue(ctx context.Context) {
-	pubsub := c.Subscribe(ctx, c.channel)
+func (c *RedisClient) ListeningQueue(ctx context.Context, t schema.TelegramSender, queue string) {
+	pubsub := c.Subscribe(ctx, queue)
 	go func() {
-		log.Println("start listen reddis channel: " + c.channel)
+		log.Println("start listen reddis channel: " + queue)
 		ch := pubsub.Channel()
 
 		for {
@@ -54,7 +46,7 @@ func (c *RedisClient) ListeningQueue(ctx context.Context) {
 					log.Println("wrong unmarshal msg " + err.Error())
 					continue
 				}
-				c.telegramer.Send2Telegram(ctx, m)
+				t.Send(ctx, m)
 			case <-ctx.Done():
 				log.Println("stopping listen redis")
 				pubsub.Close()
@@ -64,6 +56,6 @@ func (c *RedisClient) ListeningQueue(ctx context.Context) {
 	}()
 }
 
-func (c *RedisClient) RedisPing(ctx context.Context) error {
+func (c *RedisClient) Health(ctx context.Context) error {
 	return c.Ping(ctx).Err()
 }

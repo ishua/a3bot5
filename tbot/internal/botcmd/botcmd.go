@@ -46,7 +46,7 @@ type Command struct {
 	channel string
 }
 
-func (c *CmdRouter) Send2Telegram(ctx context.Context, msg schema.TelegramMsg) {
+func (c *CmdRouter) Send(ctx context.Context, msg schema.TelegramMsg) {
 	if c.telegram == nil {
 		log.Fatal("cmdRouter doesn't have telegram")
 	}
